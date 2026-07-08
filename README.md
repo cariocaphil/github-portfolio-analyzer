@@ -2,15 +2,16 @@
 
 Evidence-based analysis of a public GitHub portfolio that produces an Engineering Evidence Report.
 
-## V1 Status
+## Current Status
 
-This repository implements the first working vertical slice:
+This repository includes:
 
 - Real GitHub evidence collection via GitHub REST API
 - Deterministic repository analysis (no AI in repository stage)
 - Portfolio evidence aggregation into a unified model
 - Mock Azure OpenAI report generation layer (AI call not wired yet)
 - Next.js frontend for username input, loading/error states, and dynamic report rendering
+- V2 report UX improvements (executive summary, sticky navigation, repository evidence explorer, categorized technologies, visual summaries)
 
 ## Architecture Alignment
 
@@ -71,6 +72,17 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## Report Experience (V2 Presentation Layer)
+
+The analysis pipeline and model remain unchanged, while the report UI has been upgraded for readability and traceability:
+
+- Executive Summary dashboard at the top
+- Sticky table of contents with anchor navigation and back-to-top links
+- Presentation-layer technology categorization with fallback to `General Utilities`
+- Consistent per-lens structure (summary, score, key findings, supporting evidence, repository explorer)
+- Repository-first evidence explorer with independent accordion state
+- Lightweight visual summaries (lens density, technology categories, repository evidence profile)
+
 ## Usage
 
 1. Enter a GitHub username.
@@ -86,6 +98,10 @@ Each report section is rendered dynamically from configured Portfolio Analysis L
 - Confidence
 - Supporting evidence (repository, path, description, facts, and GitHub URL when available)
 
+Each major conclusion can be inspected through:
+
+`Conclusion -> Evidence -> Repository -> Expandable Details`
+
 ## Project Structure
 
 ```text
@@ -95,10 +111,12 @@ app/
   page.tsx
 components/
   AnalyzeForm.tsx
+  ExecutiveSummary.tsx
+  ReportNavigation.tsx
+  ReportVisuals.tsx
+  TechnologyBreakdown.tsx
   ReportView.tsx
   ReportSection.tsx
-  Observation.tsx
-  Evidence.tsx
 config/
   analysisLenses.ts
 lib/
@@ -107,6 +125,7 @@ lib/
     portfolio/
   github/
   models/
+  presentation/
   services/
   azureOpenAI.ts
 docs/
@@ -116,4 +135,5 @@ docs/
 
 - The repository analysis stage is intentionally deterministic and does not use AI.
 - Lenses are configuration-first in `config/analysisLenses.ts`.
+- Technology grouping is done only in the UI/presentation layer and does not alter extracted evidence.
 - If additional lenses are added without implementation wiring, TODO markers indicate extension points.
