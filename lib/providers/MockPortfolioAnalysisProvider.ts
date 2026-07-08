@@ -1,76 +1,71 @@
 import { getPortfolioLenses } from "@/config/analysisLenses";
+import { daysSince } from "@/lib/analysis/utils";
+import type { EvidenceSource } from "@/lib/models/evidence";
 import type { UnifiedPortfolioEvidenceModel } from "@/lib/models/portfolio";
 import type {
   DeveloperPortfolioReport,
   ReportObservation,
   ReportSection,
 } from "@/lib/models/report";
-import type { EvidenceSource } from "@/lib/models/evidence";
-import { daysSince } from "@/lib/analysis/utils";
+import type { PortfolioAnalysisProvider } from "./PortfolioAnalysisProvider";
+
+const PROVIDER_NAME = "MockPortfolioAnalysisProvider";
+const PROVIDER_VERSION = "1.0.0";
 
 /**
- * Mock Azure OpenAI portfolio analysis service.
+ * Deterministic mock portfolio analysis provider.
  *
- * In production, each portfolio lens would be sent to Azure OpenAI Structured Outputs
- * with a schema matching ReportSection. The prompt would include:
- *   - lens.promptInstructions
- *   - lens.guidingQuestion
- *   - serialized UnifiedPortfolioEvidenceModel (evidence only, no raw GitHub access)
- *
- * Example future call shape:
- *
- * ```ts
- * const completion = await client.chat.completions.create({
- *   model: process.env.AZURE_OPENAI_DEPLOYMENT!,
- *   response_format: zodResponseFormat(reportSectionSchema, "report_section"),
- *   messages: [
- *     { role: "system", content: PORTFOLIO_ANALYSIS_SYSTEM_PROMPT },
- *     { role: "user", content: buildLensPrompt(lens, portfolioEvidence) },
- *   ],
- * });
- * return completion.choices[0].message.parsed;
- * ```
+ * In production, a real provider (e.g. Azure OpenAI) would send each portfolio
+ * lens to Structured Outputs with a schema matching ReportSection.
  */
-export async function generatePortfolioReport(
-  evidence: UnifiedPortfolioEvidenceModel,
-): Promise<DeveloperPortfolioReport> {
-  const lenses = getPortfolioLenses();
-  const sections: ReportSection[] = [];
+export class MockPortfolioAnalysisProvider implements PortfolioAnalysisProvider {
+  async analyzePortfolio(
+    evidence: UnifiedPortfolioEvidenceModel,
+  ): Promise<DeveloperPortfolioReport> {
+    const lenses = getPortfolioLenses();
+    const sections: ReportSection[] = [];
 
-  for (const lens of lenses) {
-    const generator = portfolioLensGenerators[lens.id];
-    if (!generator) {
-      // TODO: Wire new portfolio lenses when added to configuration.
+    for (const lens of lenses) {
+      const generator = portfolioLensGenerators[lens.id];
+      if (!generator) {
+        // TODO: Wire new portfolio lenses when added to configuration.
+        sections.push({
+          lensId: lens.id,
+          title: lens.title,
+          guidingQuestion: lens.guidingQuestion,
+          observations: [],
+        });
+        continue;
+      }
+
       sections.push({
         lensId: lens.id,
         title: lens.title,
         guidingQuestion: lens.guidingQuestion,
-        observations: [],
+        observations: generator(evidence),
       });
-      continue;
     }
 
-    sections.push({
-      lensId: lens.id,
-      title: lens.title,
-      guidingQuestion: lens.guidingQuestion,
-      observations: generator(evidence),
-    });
+    return {
+      developerSnapshot: {
+        username: evidence.profile.username,
+        name: evidence.profile.name,
+        bio: evidence.profile.bio,
+        totalRepositories: evidence.summary.totalRepositories,
+        primaryLanguages: evidence.summary.primaryLanguages,
+        accountCreated: evidence.profile.createdAt,
+        profileUrl: evidence.profile.url,
+      },
+      sections,
+      improvementSuggestions: buildImprovementSuggestions(evidence),
+      metadata: {
+        analysisSource: "mock",
+        generationTimestamp: new Date().toISOString(),
+        providerName: PROVIDER_NAME,
+        providerVersion: PROVIDER_VERSION,
+      },
+    };
   }
-
-  return {
-    developerSnapshot: {
-      username: evidence.profile.username,
-      name: evidence.profile.name,
-      bio: evidence.profile.bio,
-      totalRepositories: evidence.summary.totalRepositories,
-      primaryLanguages: evidence.summary.primaryLanguages,
-      accountCreated: evidence.profile.createdAt,
-      profileUrl: evidence.profile.url,
-    },
-    sections,
-    improvementSuggestions: buildImprovementSuggestions(evidence),
-  };
 }
 
 type PortfolioLensGenerator = (

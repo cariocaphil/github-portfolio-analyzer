@@ -35,8 +35,16 @@ export interface DeveloperSnapshot {
   profileUrl: string;
 }
 
+export interface ReportMetadata {
+  analysisSource: string;
+  generationTimestamp: string;
+  providerName?: string;
+  providerVersion?: string;
+}
+
 export interface DeveloperPortfolioReport {
   developerSnapshot: DeveloperSnapshot;
   sections: ReportSection[];
   improvementSuggestions: string[];
+  metadata: ReportMetadata;
 }
