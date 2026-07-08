@@ -9,7 +9,9 @@ This repository includes:
 - Real GitHub evidence collection via GitHub REST API
 - Deterministic repository analysis (no AI in repository stage)
 - Portfolio evidence aggregation into a unified model
-- Mock Azure OpenAI report generation layer (AI call not wired yet)
+- Provider-agnostic portfolio analysis layer (`PortfolioAnalysisProvider`)
+- Mock portfolio analysis provider (default, unchanged report output)
+- Azure OpenAI provider placeholder for future integration
 - Next.js frontend for username input, loading/error states, and dynamic report rendering
 - V2 report UX improvements (executive summary, sticky navigation, repository evidence explorer, categorized technologies, visual summaries)
 
@@ -28,7 +30,7 @@ Pipeline:
 3. Repository Evidence Profiles
 4. Portfolio Evidence Aggregator
 5. Unified Portfolio Evidence Model
-6. Portfolio Analysis (mock Azure OpenAI layer)
+6. Portfolio Analysis (`PortfolioAnalysisProvider`)
 7. Engineering Evidence Report
 
 ## Tech Stack
@@ -43,8 +45,10 @@ Frontend and backend are in the same Next.js project.
 ## Current Behavior (Important)
 
 - GitHub API calls are real and data-dependent.
-- Portfolio report synthesis is currently mocked in `lib/azureOpenAI.ts`.
-- The file includes a clear stub showing how a future Azure OpenAI Structured Outputs call can replace the mock implementation.
+- Portfolio report synthesis runs through `PortfolioAnalysisProvider`.
+- Default provider is `mock` via `MockPortfolioAnalysisProvider` (same deterministic output as before).
+- `azure-openai` is registered but throws `ProviderConfigurationError` until implemented.
+- Provider selection is centralized in `getPortfolioAnalysisProvider()`.
 
 ## Requirements
 
@@ -62,6 +66,7 @@ cp .env.example .env.local
 Optional:
 
 - `GITHUB_TOKEN`: increases GitHub API rate limits and reliability.
+- `PORTFOLIO_ANALYSIS_PROVIDER`: `mock` (default) or `azure-openai`.
 
 ## Run Locally
 
@@ -123,11 +128,12 @@ lib/
   analysis/
     repository/
     portfolio/
+  errors/
   github/
   models/
   presentation/
+  providers/
   services/
-  azureOpenAI.ts
 docs/
 ```
 
@@ -136,4 +142,5 @@ docs/
 - The repository analysis stage is intentionally deterministic and does not use AI.
 - Lenses are configuration-first in `config/analysisLenses.ts`.
 - Technology grouping is done only in the UI/presentation layer and does not alter extracted evidence.
+- Generated reports include provider metadata (`analysisSource`, `generationTimestamp`, optional `providerName`/`providerVersion`).
 - If additional lenses are added without implementation wiring, TODO markers indicate extension points.
