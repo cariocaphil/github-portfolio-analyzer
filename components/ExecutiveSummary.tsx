@@ -14,10 +14,8 @@ export function ExecutiveSummary({ developer, summary }: ExecutiveSummaryProps) 
     >
       <h2 className="text-xl font-semibold text-slate-900">Executive Summary</h2>
       <p className="mt-1 text-sm text-slate-600">
-        {developer.name
-          ? `${developer.name} (@${developer.username})`
-          : `@${developer.username}`}{" "}
-        - consulting-style portfolio assessment based on observable engineering evidence.
+        Portfolio assessment based on observable engineering evidence across{" "}
+        {developer.totalRepositories} repositories.
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -28,6 +28,21 @@ export interface RepositoryEvidenceGroup {
   items: GroupedEvidenceItem[];
 }
 
+export interface RepresentativeRepository {
+  repository: string;
+  displayName: string;
+  highlight: string;
+}
+
+const MAX_REPRESENTATIVE_REPOSITORIES = 5;
+const DEFAULT_REPRESENTATIVE_REPOSITORIES = 4;
+
+const GENERIC_FINDING_RATIONALES = [
+  "identified as a portfolio strength",
+  "identified as a concern or gap",
+  "lens score:",
+];
+
 export interface ExecutiveSummaryViewModel {
   overallPortfolioScore: number;
   strengthSummary: string;
@@ -210,6 +225,54 @@ export function getDistinctKeyFindings(
         !shouldDropAsSummaryDuplicate(summary, observation.observation),
     )
     .slice(0, limit);
+}
+
+export function shouldShowFindingRationale(rationale: string): boolean {
+  const normalized = rationale.toLowerCase();
+  return !GENERIC_FINDING_RATIONALES.some((phrase) => normalized.includes(phrase));
+}
+
+function repositoryDisplayName(repository: string): string {
+  const segments = repository.split("/");
+  return segments[segments.length - 1] || repository;
+}
+
+function shortenText(value: string, maxLength = 72): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength - 3).trim()}...`;
+}
+
+function buildRepositoryHighlight(group: RepositoryEvidenceGroup): string {
+  const technologies = group.primaryTechnologies.slice(0, 4);
+  const signal =
+    group.keyAchievements.find(
+      (achievement) =>
+        achievement.length > 0 &&
+        !achievement.toLowerCase().includes("lens score"),
+    ) ?? group.repositoryPurpose;
+
+  if (technologies.length > 0) {
+    return `${technologies.join(", ")}${signal ? ` — ${shortenText(signal, 56)}` : ""}`;
+  }
+
+  return shortenText(signal, 80);
+}
+
+export function getRepresentativeRepositories(
+  section: ReportSection,
+  limit = DEFAULT_REPRESENTATIVE_REPOSITORIES,
+): RepresentativeRepository[] {
+  const cappedLimit = Math.min(Math.max(limit, 3), MAX_REPRESENTATIVE_REPOSITORIES);
+  return groupEvidenceByRepository(section)
+    .slice(0, cappedLimit)
+    .map((group) => ({
+      repository: group.repository,
+      displayName: repositoryDisplayName(group.repository),
+      highlight: buildRepositoryHighlight(group),
+    }));
 }
 
 export function slugFromLensId(lensId: string): string {

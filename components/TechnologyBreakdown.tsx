@@ -15,8 +15,7 @@ export function TechnologyBreakdown({ groups }: TechnologyBreakdownProps) {
     >
       <h2 className="text-lg font-semibold text-slate-900">Technology Breakdown</h2>
       <p className="mt-1 text-sm text-slate-600">
-        Technologies are grouped in the presentation layer and unknown tools are
-        retained under General Utilities.
+        Recognized technologies and tools evidenced across the portfolio.
       </p>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

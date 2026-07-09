@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   categorizeTechnologies,
   getDistinctKeyFindings,
+  getRepresentativeRepositories,
 } from "../reportPresentation";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 import type { ReportSection } from "@/lib/models/report";
@@ -121,5 +122,44 @@ describe("getDistinctKeyFindings", () => {
     const findings = getDistinctKeyFindings(section, summary, 3);
     expect(findings).toHaveLength(1);
     expect(findings[0].observation).toBe("Dockerfiles appear in two repositories.");
+  });
+});
+
+describe("getRepresentativeRepositories", () => {
+  it("returns a concise ranked list of representative repositories", () => {
+    const section = {
+      lensId: "technical-breadth",
+      title: "Technical Breadth",
+      guidingQuestion: "What technologies are demonstrated?",
+      observations: [
+        {
+          observation: "Strong frontend breadth.",
+          rationale: "Lens score: 84.",
+          confidence: "high" as const,
+          supportingEvidence: [
+            {
+              id: "ev-1",
+              repository: "dev-user/github-portfolio-analyzer",
+              path: "package.json",
+              description: "Node.js package manifest",
+              facts: ["dependency: react", "dependency: next"],
+            },
+            {
+              id: "ev-2",
+              repository: "dev-user/blind-aria-react",
+              path: "package.json",
+              description: "Node.js package manifest",
+              facts: ["dependency: react", "dependency: fastapi"],
+            },
+          ],
+        },
+      ],
+    };
+
+    const representatives = getRepresentativeRepositories(section, 3);
+    expect(representatives.length).toBeGreaterThan(0);
+    expect(representatives.length).toBeLessThanOrEqual(3);
+    expect(representatives[0].displayName).toBe("github-portfolio-analyzer");
+    expect(representatives[0].highlight.length).toBeGreaterThan(0);
   });
 });
