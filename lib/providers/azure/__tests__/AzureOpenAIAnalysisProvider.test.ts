@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getPortfolioLenses } from "@/config/analysisLenses";
 import { AzureOpenAIAnalysisProvider } from "../../AzureOpenAIAnalysisProvider";
 import { ProviderExecutionError } from "@/lib/errors/ProviderExecutionError";
 import type { AzureCompletionClient } from "../azureCompletionClient";
@@ -38,6 +39,8 @@ const executiveSummary: ExecutiveSummaryResult = {
   finalRecommendations: ["Introduce GitHub Actions"],
 };
 
+const ENABLED_LENS_COUNT = getPortfolioLenses().length;
+
 function createMockClient(): AzureCompletionClient {
   return {
     async createStructuredCompletion<T>(params) {
@@ -76,7 +79,7 @@ describe("AzureOpenAIAnalysisProvider", () => {
 
     const report = await provider.analyzePortfolio(createSampleEvidence());
 
-    expect(report.sections.length).toBe(7);
+    expect(report.sections.length).toBe(ENABLED_LENS_COUNT);
     expect(report.metadata.analysisSource).toBe("azure-openai");
     expect(report.metadata.model).toBe("gpt-4o-mini");
     expect(report.metadata.totalTokens).toBeGreaterThan(0);
@@ -119,7 +122,7 @@ describe("AzureOpenAIAnalysisProvider", () => {
     const provider = new AzureOpenAIAnalysisProvider(() => client);
     const report = await provider.analyzePortfolio(createSampleEvidence());
 
-    expect(report.sections.length).toBe(7);
+    expect(report.sections.length).toBe(ENABLED_LENS_COUNT);
     expect(technicalBreadthCalls).toBe(2);
   });
 
