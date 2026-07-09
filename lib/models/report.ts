@@ -40,6 +40,15 @@ export interface ReportMetadata {
   generationTimestamp: string;
   providerName?: string;
   providerVersion?: string;
+  provider?: string;
+  model?: string;
+  analysisDurationMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  averageConfidence?: number;
+  highestConfidence?: number;
+  lowestConfidence?: number;
 }
 
 export interface DeveloperPortfolioReport {

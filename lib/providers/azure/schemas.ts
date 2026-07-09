@@ -1,0 +1,57 @@
+export const LENS_ANALYSIS_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    score: { type: "number" },
+    confidence: { type: "number" },
+    summary: { type: "string" },
+    strengths: { type: "array", items: { type: "string" } },
+    concerns: { type: "array", items: { type: "string" } },
+    evidence: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          repository: { type: "string" },
+          path: { type: "string" },
+          description: { type: "string" },
+          facts: { type: "array", items: { type: "string" } },
+          githubUrl: { type: "string" },
+        },
+        required: ["repository", "path", "description", "facts"],
+        additionalProperties: false,
+      },
+    },
+    recommendations: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "score",
+    "confidence",
+    "summary",
+    "strengths",
+    "concerns",
+    "evidence",
+    "recommendations",
+  ],
+  additionalProperties: false,
+} as const;
+
+export const EXECUTIVE_SUMMARY_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    executiveSummary: { type: "string" },
+    careerLevel: { type: "string" },
+    developerProfile: { type: "string" },
+    overallStrengths: { type: "array", items: { type: "string" } },
+    growthOpportunities: { type: "array", items: { type: "string" } },
+    finalRecommendations: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "executiveSummary",
+    "careerLevel",
+    "developerProfile",
+    "overallStrengths",
+    "growthOpportunities",
+    "finalRecommendations",
+  ],
+  additionalProperties: false,
+} as const;
