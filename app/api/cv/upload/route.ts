@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import { uploadCv } from "@/lib/azureBlobStorage";
+import {
+  BlobConfigurationError,
+  BlobUploadError,
+} from "@/lib/azure/blobStorageErrors";
 import {
   isCvUploadFile,
   validateCvUpload,
@@ -34,16 +39,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO V7.2: Upload validated CV PDF to Azure Blob Storage.
-    await fileEntry.arrayBuffer();
+    const fileBuffer = Buffer.from(await fileEntry.arrayBuffer());
+    const uploadResult = await uploadCv(fileBuffer, validation.filename, {
+      mimeType: validation.mimeType,
+      size: validation.size,
+    });
+
+    // TODO V7.3:
+    // Trigger Azure AI Document Intelligence
+    // to extract structured CV data.
 
     return NextResponse.json({
       success: true,
-      filename: validation.filename,
-      size: validation.size,
-      mimeType: validation.mimeType,
+      blobName: uploadResult.blobName,
+      url: uploadResult.url,
+      filename: uploadResult.filename,
+      size: uploadResult.size,
     });
   } catch (error) {
+    if (error instanceof BlobConfigurationError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 503 },
+      );
+    }
+
+    if (error instanceof BlobUploadError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
     console.error("CV upload failed:", error);
     return NextResponse.json(
       { success: false, error: "CV upload failed." },

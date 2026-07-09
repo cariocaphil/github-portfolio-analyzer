@@ -19,18 +19,20 @@ describe("uploadCv", () => {
         status: 200,
         json: async () => ({
           success: true,
+          blobName: "2026-07-09/8c5a3f2e-cv.pdf",
+          url: "https://example.blob.core.windows.net/cvs/2026-07-09/8c5a3f2e-cv.pdf",
           filename: "philippe-dijon-cv.pdf",
           size: 3,
-          mimeType: CV_PDF_MIME_TYPE,
         }),
       }),
     );
 
     await expect(uploadCv(file)).resolves.toEqual({
       success: true,
+      blobName: "2026-07-09/8c5a3f2e-cv.pdf",
+      url: "https://example.blob.core.windows.net/cvs/2026-07-09/8c5a3f2e-cv.pdf",
       filename: "philippe-dijon-cv.pdf",
       size: 3,
-      mimeType: CV_PDF_MIME_TYPE,
     });
   });
 

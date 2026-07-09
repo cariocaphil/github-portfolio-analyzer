@@ -1,10 +1,18 @@
-import type { CvUploadError, CvUploadSuccess } from "@/types/cv";
+import type { CvUploadError } from "@/types/cv";
 
 export const MAX_CV_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 export const CV_PDF_MIME_TYPE = "application/pdf";
 
+export type CvUploadValidationSuccess = {
+  ok: true;
+  success: true;
+  filename: string;
+  size: number;
+  mimeType: string;
+};
+
 export type CvUploadValidationResult =
-  | ({ ok: true } & CvUploadSuccess)
+  | CvUploadValidationSuccess
   | ({ ok: false } & CvUploadError & { status: 400 | 413 });
 
 export interface CvUploadFileLike {

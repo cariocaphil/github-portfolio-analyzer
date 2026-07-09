@@ -1,8 +1,9 @@
 export type CvUploadSuccess = {
   success: true;
+  blobName: string;
+  url: string;
   filename: string;
   size: number;
-  mimeType: string;
 };
 
 export type CvUploadError = {
