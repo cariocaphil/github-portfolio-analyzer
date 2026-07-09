@@ -33,10 +33,16 @@ export interface RequestTokenUsage extends TokenUsageTotals {
   schemaName: string;
 }
 
+export interface AzureModelCapabilities {
+  supportsTemperature: boolean;
+  supportsTopP: boolean;
+}
+
 export interface AzureOpenAIConfig {
   endpoint: string;
   apiKey: string;
   deployment: string;
   apiVersion: string;
   usesV1Endpoint: boolean;
+  modelCapabilities: AzureModelCapabilities;
 }

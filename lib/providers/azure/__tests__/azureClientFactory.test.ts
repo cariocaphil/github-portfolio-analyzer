@@ -46,6 +46,10 @@ describe("azureClientFactory", () => {
       deployment: "gpt-5-mini",
       apiVersion: "v1",
       usesV1Endpoint: true,
+      modelCapabilities: {
+        supportsTemperature: false,
+        supportsTopP: false,
+      },
     };
 
     const built = buildAzureClientConfiguration(config);
@@ -77,6 +81,10 @@ describe("azureClientFactory", () => {
       deployment: "gpt-4o-mini",
       apiVersion: "2024-10-21",
       usesV1Endpoint: false,
+      modelCapabilities: {
+        supportsTemperature: true,
+        supportsTopP: true,
+      },
     });
 
     expect(built.usesV1Path).toBe(false);

@@ -50,14 +50,10 @@ describe("azureCompletionClient fallbacks", () => {
     expect(next?.structuredOutput).toBe("json_object");
   });
 
-  it("retries without temperature and then succeeds via Responses API", async () => {
+  it("starts without sampling params for gpt-5-mini and succeeds on first response request", async () => {
     const logSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const responsesCreate = vi
       .fn()
-      .mockRejectedValueOnce({
-        status: 400,
-        message: "Unsupported parameter: 'temperature' is not supported with this model.",
-      })
       .mockResolvedValueOnce({
         output_text: JSON.stringify(sampleResult),
         usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
@@ -77,6 +73,10 @@ describe("azureCompletionClient fallbacks", () => {
           deployment: "gpt-5-mini",
           apiVersion: "2024-10-21",
           usesV1Endpoint: false,
+          modelCapabilities: {
+            supportsTemperature: false,
+            supportsTopP: false,
+          },
         },
         params: {
           schemaName: "lens_analysis_test",
@@ -89,15 +89,16 @@ describe("azureCompletionClient fallbacks", () => {
     );
 
     expect(result.parsed.summary).toBe("Summary");
-    expect(responsesCreate).toHaveBeenCalledTimes(2);
-    expect(responsesCreate.mock.calls[1][0]).not.toHaveProperty("temperature");
+    expect(responsesCreate).toHaveBeenCalledTimes(1);
+    expect(responsesCreate.mock.calls[0][0]).not.toHaveProperty("temperature");
+    expect(responsesCreate.mock.calls[0][0]).not.toHaveProperty("top_p");
     expect(
-      String(responsesCreate.mock.calls[1][0].input).includes(
+      String(responsesCreate.mock.calls[0][0].input).includes(
         "Respond with JSON matching this schema exactly:",
       ),
     ).toBe(false);
     expect(
-      String(responsesCreate.mock.calls[1][0].input).includes("Analyze this portfolio"),
+      String(responsesCreate.mock.calls[0][0].input).includes("Analyze this portfolio"),
     ).toBe(true);
     expect(
       logSpy.mock.calls.some(([message]) => {
@@ -141,6 +142,10 @@ describe("azureCompletionClient fallbacks", () => {
           deployment: "gpt-5-mini",
           apiVersion: "2024-10-21",
           usesV1Endpoint: false,
+          modelCapabilities: {
+            supportsTemperature: false,
+            supportsTopP: false,
+          },
         },
         params: {
           schemaName: "lens_analysis_test",

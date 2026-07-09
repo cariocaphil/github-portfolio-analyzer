@@ -56,12 +56,7 @@ export async function runStructuredCompletionWithFallback<T>(
   client: OpenAI,
   context: RequestContext,
 ): Promise<StructuredCompletionResult<T>> {
-  const initialStrategy: RequestStrategy = {
-    api: "responses",
-    structuredOutput: "json_schema",
-    temperature: 0.2,
-    topP: 0.95,
-  };
+  const initialStrategy = buildInitialStrategy(context.config);
 
   let strategy = initialStrategy;
   let lastError: unknown;
@@ -110,6 +105,15 @@ export async function runStructuredCompletionWithFallback<T>(
     "AzureOpenAIAnalysisProvider",
     lastError,
   );
+}
+
+function buildInitialStrategy(config: AzureOpenAIConfig): RequestStrategy {
+  return {
+    api: "responses",
+    structuredOutput: "json_schema",
+    temperature: config.modelCapabilities.supportsTemperature ? 0.2 : undefined,
+    topP: config.modelCapabilities.supportsTopP ? 0.95 : undefined,
+  };
 }
 
 export function getNextFallbackStrategy(
