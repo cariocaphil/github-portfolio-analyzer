@@ -13,8 +13,12 @@ export type CvUploadSuccess = {
 
 export type CvUploadError = {
   success: false;
+  stage?: string;
   error: string;
   blobName?: string;
+  url?: string;
+  filename?: string;
+  size?: number;
 };
 
 export type CvUploadResponse = CvUploadSuccess | CvUploadError;

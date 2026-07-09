@@ -26,8 +26,8 @@ describe("azureDocumentIntelligence", () => {
     beginAnalyzeDocumentFromUrl.mockResolvedValue({ pollUntilDone });
     pollUntilDone.mockResolvedValue({
       apiVersion: "2024-11-30",
-      modelId: "prebuilt-resume",
-      content: "",
+      modelId: "prebuilt-layout",
+      content: "Jane Doe\njane@example.com\n\nSkills\nTypeScript",
       pages: [{ pageNumber: 1 }],
       documents: [
         {
@@ -54,17 +54,18 @@ describe("azureDocumentIntelligence", () => {
     vi.unstubAllEnvs();
   });
 
-  it("analyzes CV content from a buffer", async () => {
+  it("analyzes CV content from a buffer using the configured model", async () => {
     const { analyzeCv } = await import("@/lib/azureDocumentIntelligence");
     const result = await analyzeCv(Buffer.from("%PDF"), {
       blobName: "2026-07-09/test-cv.pdf",
     });
 
     expect(beginAnalyzeDocument).toHaveBeenCalledWith(
-      "prebuilt-resume",
+      "prebuilt-layout",
       expect.any(Buffer),
     );
     expect(result.pagesAnalyzed).toBe(1);
+    expect(result.modelId).toBe("prebuilt-layout");
     expect(result.candidateCv.personalInformation.fullName).toBe("Jane Doe");
     expect(result.candidateCv.skills).toEqual(["TypeScript"]);
   });
@@ -76,7 +77,7 @@ describe("azureDocumentIntelligence", () => {
     });
 
     expect(beginAnalyzeDocumentFromUrl).toHaveBeenCalledWith(
-      "prebuilt-resume",
+      "prebuilt-layout",
       "https://example.blob.core.windows.net/cv.pdf",
     );
   });
@@ -90,6 +91,31 @@ describe("azureDocumentIntelligence", () => {
 
     await expect(analyzeCv(Buffer.from("pdf"))).rejects.toMatchObject({
       name: "DocumentConfigurationError",
+    });
+  });
+
+  it("maps Azure ModelNotFound to DocumentAnalysisError with diagnostics", async () => {
+    beginAnalyzeDocument.mockRejectedValueOnce(
+      Object.assign(new Error("Resource not found."), {
+        code: "NotFound",
+        statusCode: 404,
+        details: {
+          error: {
+            innererror: {
+              code: "ModelNotFound",
+              message: "The requested model was not found.",
+            },
+          },
+        },
+      }),
+    );
+
+    const { analyzeCv } = await import("@/lib/azureDocumentIntelligence");
+
+    await expect(analyzeCv(Buffer.from("pdf"))).rejects.toMatchObject({
+      name: "DocumentAnalysisError",
+      azureErrorCode: "ModelNotFound",
+      statusCode: 404,
     });
   });
 });

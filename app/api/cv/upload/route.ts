@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeCv } from "@/lib/azureDocumentIntelligence";
-import { uploadCv } from "@/lib/azureBlobStorage";
+import { uploadCv, type CvBlobUploadResult } from "@/lib/azureBlobStorage";
 import {
   BlobConfigurationError,
   BlobUploadError,
@@ -8,6 +8,7 @@ import {
 import { buildCvExtractionSummary } from "@/lib/cv/buildCvExtractionSummary";
 import {
   DocumentAnalysisError,
+  DocumentAuthenticationError,
   DocumentConfigurationError,
 } from "@/lib/azure/documentIntelligenceErrors";
 import {
@@ -15,8 +16,26 @@ import {
   validateCvUpload,
 } from "@/lib/cv/cvUploadValidation";
 
+function buildAnalysisFailureResponse(
+  error: DocumentAnalysisError | DocumentAuthenticationError,
+  uploadResult?: CvBlobUploadResult,
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      stage: "document-analysis",
+      error: error.message,
+      blobName: uploadResult?.blobName,
+      url: uploadResult?.url,
+      filename: uploadResult?.filename,
+      size: uploadResult?.size,
+    },
+    { status: error.statusCode ?? 502 },
+  );
+}
+
 export async function POST(request: Request) {
-  let uploadedBlobName: string | undefined;
+  let uploadResult: CvBlobUploadResult | undefined;
 
   try {
     let formData: FormData;
@@ -25,7 +44,7 @@ export async function POST(request: Request) {
       formData = await request.formData();
     } catch {
       return NextResponse.json(
-        { success: false, error: "A CV PDF file is required." },
+        { success: false, stage: "validation", error: "A CV PDF file is required." },
         { status: 400 },
       );
     }
@@ -35,24 +54,23 @@ export async function POST(request: Request) {
 
     if (!validation.ok) {
       return NextResponse.json(
-        { success: false, error: validation.error },
+        { success: false, stage: "validation", error: validation.error },
         { status: validation.status },
       );
     }
 
     if (!isCvUploadFile(fileEntry)) {
       return NextResponse.json(
-        { success: false, error: "A CV PDF file is required." },
+        { success: false, stage: "validation", error: "A CV PDF file is required." },
         { status: 400 },
       );
     }
 
     const fileBuffer = Buffer.from(await fileEntry.arrayBuffer());
-    const uploadResult = await uploadCv(fileBuffer, validation.filename, {
+    uploadResult = await uploadCv(fileBuffer, validation.filename, {
       mimeType: validation.mimeType,
       size: validation.size,
     });
-    uploadedBlobName = uploadResult.blobName;
 
     const analysisResult = await analyzeCv(fileBuffer, {
       blobName: uploadResult.blobName,
@@ -75,39 +93,47 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof BlobConfigurationError) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, stage: "blob-storage", error: error.message },
         { status: 503 },
       );
     }
 
     if (error instanceof DocumentConfigurationError) {
       return NextResponse.json(
-        { success: false, error: error.message, blobName: uploadedBlobName },
+        {
+          success: false,
+          stage: "document-analysis",
+          error: error.message,
+          blobName: uploadResult?.blobName,
+          url: uploadResult?.url,
+        },
         { status: 503 },
       );
     }
 
     if (error instanceof BlobUploadError) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, stage: "blob-storage", error: error.message },
         { status: 500 },
       );
     }
 
-    if (error instanceof DocumentAnalysisError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: error.message,
-          blobName: uploadedBlobName,
-        },
-        { status: 502 },
-      );
+    if (
+      error instanceof DocumentAnalysisError ||
+      error instanceof DocumentAuthenticationError
+    ) {
+      return buildAnalysisFailureResponse(error, uploadResult);
     }
 
     console.error("CV upload failed:", error);
     return NextResponse.json(
-      { success: false, error: "CV upload failed.", blobName: uploadedBlobName },
+      {
+        success: false,
+        stage: "upload",
+        error: "CV upload failed.",
+        blobName: uploadResult?.blobName,
+        url: uploadResult?.url,
+      },
       { status: 500 },
     );
   }

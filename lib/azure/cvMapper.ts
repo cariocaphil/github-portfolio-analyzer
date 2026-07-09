@@ -1,8 +1,8 @@
 import type { AnalyzeResult } from "@azure/ai-form-recognizer";
 import type { DocumentField } from "@azure/ai-form-recognizer";
+import { mapAzureLayoutToCandidateCv } from "@/lib/azure/layoutCvMapper";
 import {
   type CandidateCv,
-  createEmptyCandidateCv,
   type CertificationEntry,
   type EducationEntry,
   type EmploymentEntry,
@@ -169,16 +169,9 @@ function mapSkills(fields: Record<string, DocumentField | undefined>): string[] 
   return skills;
 }
 
-export function mapAzureResumeToCandidateCv(
-  analysisResult: AnalyzeResult,
+function mapStructuredDocumentFieldsToCandidateCv(
+  fields: Record<string, DocumentField | undefined>,
 ): CandidateCv {
-  const document = analysisResult.documents?.[0];
-  if (!document?.fields) {
-    return createEmptyCandidateCv();
-  }
-
-  const fields = document.fields;
-
   return {
     personalInformation: mapPersonalInformation(fields),
     summary: getStringValue(fields.Summary ?? fields.Objective),
@@ -189,4 +182,26 @@ export function mapAzureResumeToCandidateCv(
     languages: mapLanguages(fields),
     projects: mapProjects(fields),
   };
+}
+
+export function mapAzureResumeToCandidateCv(
+  analysisResult: AnalyzeResult,
+): CandidateCv {
+  const document = analysisResult.documents?.[0];
+  if (!document?.fields) {
+    return mapAzureLayoutToCandidateCv(analysisResult);
+  }
+
+  return mapStructuredDocumentFieldsToCandidateCv(document.fields);
+}
+
+export function mapAzureAnalysisToCandidateCv(
+  analysisResult: AnalyzeResult,
+): CandidateCv {
+  const document = analysisResult.documents?.[0];
+  if (document?.fields && Object.keys(document.fields).length > 0) {
+    return mapStructuredDocumentFieldsToCandidateCv(document.fields);
+  }
+
+  return mapAzureLayoutToCandidateCv(analysisResult);
 }

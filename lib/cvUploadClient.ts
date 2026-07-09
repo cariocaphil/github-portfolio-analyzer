@@ -2,11 +2,13 @@ import type { CvUploadResponse, CvUploadSuccess } from "@/types/cv";
 
 export class CvUploadRequestError extends Error {
   readonly status?: number;
+  readonly stage?: string;
 
-  constructor(message: string, status?: number) {
+  constructor(message: string, status?: number, stage?: string) {
     super(message);
     this.name = "CvUploadRequestError";
     this.status = status;
+    this.stage = stage;
   }
 }
 
@@ -28,7 +30,7 @@ export async function uploadCv(file: File): Promise<CvUploadSuccess> {
   }
 
   if (!data.success) {
-    throw new CvUploadRequestError(data.error, response.status);
+    throw new CvUploadRequestError(data.error, response.status, data.stage);
   }
 
   if (!response.ok) {

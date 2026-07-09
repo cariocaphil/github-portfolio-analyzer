@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnalyzeResult } from "@azure/ai-form-recognizer";
-import { mapAzureResumeToCandidateCv } from "@/lib/azure/cvMapper";
+import { mapAzureAnalysisToCandidateCv, mapAzureResumeToCandidateCv } from "@/lib/azure/cvMapper";
 import { buildCvExtractionSummary } from "@/lib/cv/buildCvExtractionSummary";
 
 const azureResumeFixture: AnalyzeResult = {
@@ -127,15 +127,22 @@ describe("mapAzureResumeToCandidateCv", () => {
     expect(candidateCv.projects[0]?.name).toBe("Portfolio Analyzer");
   });
 
-  it("returns an empty CandidateCv when no documents are present", () => {
+  it("falls back to layout extraction when structured fields are absent", () => {
     const candidateCv = mapAzureResumeToCandidateCv({
       apiVersion: "2024-11-30",
-      modelId: "prebuilt-resume",
-      content: "",
+      modelId: "prebuilt-layout",
+      content: "Jane Doe\njane@example.com\n\nSkills\nTypeScript, React",
     });
 
-    expect(candidateCv.skills).toEqual([]);
-    expect(candidateCv.employmentHistory).toEqual([]);
+    expect(candidateCv.personalInformation.email).toBe("jane@example.com");
+    expect(candidateCv.skills).toEqual(["TypeScript", "React"]);
+  });
+});
+
+describe("mapAzureAnalysisToCandidateCv", () => {
+  it("prefers structured document fields when present", () => {
+    const candidateCv = mapAzureAnalysisToCandidateCv(azureResumeFixture);
+    expect(candidateCv.personalInformation.fullName).toBe("Jane Doe");
   });
 });
 
