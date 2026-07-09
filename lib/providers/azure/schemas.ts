@@ -15,7 +15,6 @@ export const LENS_ANALYSIS_JSON_SCHEMA = {
           path: { type: "string" },
           description: { type: "string" },
           facts: { type: "array", items: { type: "string" } },
-          githubUrl: { type: "string" },
         },
         required: ["repository", "path", "description", "facts"],
         additionalProperties: false,
