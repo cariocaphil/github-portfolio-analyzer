@@ -1,0 +1,40 @@
+export interface LensEvidenceItem {
+  repository: string;
+  path: string;
+  description: string;
+  facts: string[];
+  githubUrl?: string;
+}
+
+export interface LensAnalysisResult {
+  score: number;
+  confidence: number;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  evidence: LensEvidenceItem[];
+  recommendations: string[];
+}
+
+export interface ExecutiveSummaryResult {
+  executiveSummary: string;
+  careerLevel: string;
+  developerProfile: string;
+  overallStrengths: string[];
+  growthOpportunities: string[];
+  finalRecommendations: string[];
+}
+
+export interface TokenUsageTotals {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface AzureOpenAIConfig {
+  endpoint: string;
+  apiKey: string;
+  deployment: string;
+  apiVersion: string;
+  usesV1Endpoint: boolean;
+}

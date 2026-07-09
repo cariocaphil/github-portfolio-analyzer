@@ -115,7 +115,12 @@ The application depends on the provider interface, not on any specific LLM or an
 Current implementations:
 
 * **Mock** — deterministic analysis used as the default provider
-* **Azure OpenAI** — placeholder for future Structured Outputs integration
+* **Azure OpenAI** — production provider with:
+  * repository-context markdown construction
+  * parallel lens analysis
+  * executive synthesis after lens completion
+  * structured outputs with strict fallbacks
+  * retry and partial-failure recovery for failed lens requests only
 
 Provider selection is centralized and configured via `PORTFOLIO_ANALYSIS_PROVIDER`. When unset, the application falls back to `mock`.
 
@@ -131,8 +136,14 @@ Responsibilities:
 * apply Portfolio Analysis Lenses
 * produce a complete Engineering Evidence Report
 * attach report metadata describing how the report was generated
+* enforce evidence-grounded conclusions and confidence scoring
 
 The provider never accesses GitHub directly. It only interprets structured evidence produced upstream.
+
+For Azure OpenAI, endpoint handling supports both:
+
+* Azure v1 path-based mode (`/openai/v1/`) when `AZURE_OPENAI_API_VERSION=v1`
+* legacy `api-version` query-based mode for dated API versions
 
 Adding a new provider requires:
 

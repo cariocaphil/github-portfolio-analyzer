@@ -1,6 +1,8 @@
 import { aggregatePortfolioEvidence } from "@/lib/analysis/portfolio/aggregator";
 import { analyzeRepositories } from "@/lib/analysis/repository/pipeline";
+import { ProviderAnalysisError } from "@/lib/errors/ProviderAnalysisError";
 import { ProviderConfigurationError } from "@/lib/errors/ProviderConfigurationError";
+import { ProviderExecutionError } from "@/lib/errors/ProviderExecutionError";
 import { ProviderUnavailableError } from "@/lib/errors/ProviderUnavailableError";
 import { UnsupportedProviderError } from "@/lib/errors/UnsupportedProviderError";
 import { fetchGitHubPortfolio } from "@/lib/github/evidenceProvider";
@@ -36,6 +38,14 @@ export function formatAnalysisError(error: unknown): string {
   }
 
   if (error instanceof ProviderUnavailableError) {
+    return error.message;
+  }
+
+  if (error instanceof ProviderExecutionError) {
+    return error.message;
+  }
+
+  if (error instanceof ProviderAnalysisError) {
     return error.message;
   }
 
