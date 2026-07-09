@@ -11,7 +11,7 @@ This repository includes:
 - Portfolio evidence aggregation into a unified model
 - Provider-agnostic portfolio analysis layer (`PortfolioAnalysisProvider`)
 - Mock portfolio analysis provider (default, unchanged report output)
-- Azure OpenAI provider placeholder for future integration
+- Production Azure OpenAI provider with multi-stage analysis, retries, and structured-output fallbacks
 - Next.js frontend for username input, loading/error states, and dynamic report rendering
 - V2 report UX improvements (executive summary, sticky navigation, repository evidence explorer, categorized technologies, visual summaries)
 
@@ -47,7 +47,7 @@ Frontend and backend are in the same Next.js project.
 - GitHub API calls are real and data-dependent.
 - Portfolio report synthesis runs through `PortfolioAnalysisProvider`.
 - Default provider is `mock` via `MockPortfolioAnalysisProvider` (same deterministic output as before).
-- `azure-openai` is registered but throws `ProviderConfigurationError` until implemented.
+- `azure-openai` performs parallel lens analysis, executive synthesis, confidence aggregation, and token/metadata capture.
 - Provider selection is centralized in `getPortfolioAnalysisProvider()`.
 
 ## Requirements
@@ -67,6 +67,12 @@ Optional:
 
 - `GITHUB_TOKEN`: increases GitHub API rate limits and reliability.
 - `PORTFOLIO_ANALYSIS_PROVIDER`: `mock` (default) or `azure-openai`.
+- `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`: required when using `azure-openai`.
+
+Azure API version notes:
+
+- `AZURE_OPENAI_API_VERSION=v1` uses Azure OpenAI v1 path handling (`/openai/v1/`) and does **not** append `?api-version=v1`.
+- Dated Azure API versions (for example `2024-10-21`) continue using legacy `api-version` query handling.
 
 ## Run Locally
 
@@ -143,4 +149,5 @@ docs/
 - Lenses are configuration-first in `config/analysisLenses.ts`.
 - Technology grouping is done only in the UI/presentation layer and does not alter extracted evidence.
 - Generated reports include provider metadata (`analysisSource`, `generationTimestamp`, optional `providerName`/`providerVersion`).
+- Azure reports additionally include operational metadata such as token usage, analysis duration, and confidence aggregates.
 - If additional lenses are added without implementation wiring, TODO markers indicate extension points.

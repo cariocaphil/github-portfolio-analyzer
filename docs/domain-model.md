@@ -102,7 +102,7 @@ The application depends on the provider interface rather than on a concrete impl
 Current implementations:
 
 * Mock provider (default)
-* Azure OpenAI provider (placeholder)
+* Azure OpenAI provider (production)
 
 ---
 
@@ -147,6 +147,7 @@ Report metadata describes how the report was generated. It includes:
 * generation timestamp
 * optional provider name
 * optional provider version
+* optional provider runtime metrics (for example model/deployment identifier, token usage, duration, and confidence aggregates)
 
 Metadata belongs to the generated report, not to the Unified Portfolio Evidence Model.
 
