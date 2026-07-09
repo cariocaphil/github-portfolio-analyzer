@@ -4,6 +4,7 @@ import type {
   ReportObservation,
   ReportSection,
 } from "@/lib/models/report";
+import { normalizeTechnologyName } from "@/lib/technology/normalization";
 
 export type ConfidenceLevel = ReportObservation["confidence"];
 
@@ -171,24 +172,42 @@ export function categorizeTechnologies(
   report: DeveloperPortfolioReport,
 ): TechnologyCategoryGroup[] {
   const allTokens = new Set<string>();
-  for (const section of report.sections) {
-    for (const observation of section.observations) {
-      for (const evidence of observation.supportingEvidence) {
-        for (const fact of evidence.facts) {
-          const tokens = fact
-            .split(/[,:]/)
-            .map(normalizeTechnology)
-            .filter((token) => token.length > 1 && token.length < 40);
-          for (const token of tokens) {
-            allTokens.add(token);
-          }
-        }
-      }
+
+  const metadataTechnologies = report.metadata.aggregatedTechnologies ?? [];
+  for (const technology of metadataTechnologies) {
+    const normalized = normalizeTechnologyName(technology);
+    if (normalized) {
+      allTokens.add(normalized);
     }
   }
 
   for (const language of report.developerSnapshot.primaryLanguages) {
-    allTokens.add(language);
+    const normalized = normalizeTechnologyName(language);
+    if (normalized) {
+      allTokens.add(normalized);
+    }
+  }
+
+  // Backward-compatible fallback for old reports without aggregated technologies.
+  if (allTokens.size === 0) {
+    for (const section of report.sections) {
+      for (const observation of section.observations) {
+        for (const evidence of observation.supportingEvidence) {
+          for (const fact of evidence.facts) {
+            const tokens = fact
+              .split(/[,:]/)
+              .map(normalizeTechnology)
+              .filter((token) => token.length > 1 && token.length < 40);
+            for (const token of tokens) {
+              const normalized = normalizeTechnologyName(token);
+              if (normalized) {
+                allTokens.add(normalized);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   const grouped = new Map<string, Set<string>>();

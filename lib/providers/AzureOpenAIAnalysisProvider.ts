@@ -133,6 +133,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
         promptTokens: tokenUsage.promptTokens,
         completionTokens: tokenUsage.completionTokens,
         totalTokens: tokenUsage.totalTokens,
+        aggregatedTechnologies: evidence.aggregatedTechnologies,
         requestTokenUsage,
         averageConfidence: confidence.averageConfidence,
         highestConfidence: confidence.highestConfidence,

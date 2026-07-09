@@ -4,6 +4,7 @@ import type {
   ProfileMetadata,
   UnifiedPortfolioEvidenceModel,
 } from "@/lib/models/portfolio";
+import { normalizeTechnologyName } from "@/lib/technology/normalization";
 
 function hasObservationMatching(
   profile: RepositoryEvidenceProfile,
@@ -76,7 +77,10 @@ export function aggregatePortfolioEvidence(
   const techSet = new Set<string>();
   for (const repoProfile of repositoryProfiles) {
     for (const tech of repoProfile.detectedTechnologies) {
-      techSet.add(tech.name);
+      const normalized = normalizeTechnologyName(tech.name);
+      if (normalized) {
+        techSet.add(normalized);
+      }
     }
   }
 

@@ -63,6 +63,7 @@ export class MockPortfolioAnalysisProvider implements PortfolioAnalysisProvider 
         generationTimestamp: new Date().toISOString(),
         providerName: PROVIDER_NAME,
         providerVersion: PROVIDER_VERSION,
+        aggregatedTechnologies: evidence.aggregatedTechnologies,
       },
     };
   }

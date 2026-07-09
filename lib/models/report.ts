@@ -49,6 +49,7 @@ export interface ReportMetadata {
   averageConfidence?: number;
   highestConfidence?: number;
   lowestConfidence?: number;
+  aggregatedTechnologies?: string[];
   requestTokenUsage?: Array<{
     requestType: "lens_analysis" | "executive_summary";
     lensId?: string;
