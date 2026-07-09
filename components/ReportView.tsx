@@ -4,6 +4,7 @@ import { ReportSectionView } from "@/components/ReportSection";
 import { ReportVisuals } from "@/components/ReportVisuals";
 import { TechnologyBreakdown } from "@/components/TechnologyBreakdown";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
+import { consolidateImprovementSuggestions } from "@/lib/presentation/improvementSuggestions";
 import {
   buildExecutiveSummary,
   categorizeTechnologies,
@@ -17,7 +18,8 @@ interface ReportViewProps {
 }
 
 export function ReportView({ report }: ReportViewProps) {
-  const { developerSnapshot, sections, improvementSuggestions } = report;
+  const { developerSnapshot, sections } = report;
+  const improvementSuggestions = consolidateImprovementSuggestions(report);
   const executiveSummary = buildExecutiveSummary(report);
   const technologyGroups = categorizeTechnologies(report);
   const sectionSummaries = sections.map(toSectionSummary);
