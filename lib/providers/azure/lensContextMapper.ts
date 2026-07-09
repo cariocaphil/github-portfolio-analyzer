@@ -1,7 +1,6 @@
 import type { AnalysisLens } from "@/lib/models/report";
 import type { RepositoryEvidenceProfile } from "@/lib/models/evidence";
 import type { UnifiedPortfolioEvidenceModel } from "@/lib/models/portfolio";
-import type { RepositoryContext } from "./portfolioContextBuilder";
 
 const LENS_REPOSITORY_OBSERVATION_IDS: Record<string, string[]> = {
   "technical-breadth": ["technical-stack", "repository-purpose"],
@@ -102,18 +101,17 @@ function summarizeProfileForLens(
 export function buildLensContextMarkdown(params: {
   lens: AnalysisLens;
   evidence: UnifiedPortfolioEvidenceModel;
-  repositoryContexts: Map<string, RepositoryContext>;
 }): string {
   const relevantProfiles = params.evidence.repositoryProfiles.filter((profile) =>
     profileMatchesLens(profile, params.lens.id),
   );
 
   const sections = relevantProfiles.map((profile) => {
-    const cached = params.repositoryContexts.get(profile.metadata.fullName);
     const highlights = summarizeProfileForLens(profile, params.lens.id);
     return [
       `## ${profile.metadata.fullName}`,
-      ...(cached ? [cached.markdown.split("Important README excerpt:")[0]?.trim() ?? ""] : []),
+      `Primary language: ${profile.metadata.language ?? "Unknown"}`,
+      `Stars/Forks: ${profile.metadata.stars}/${profile.metadata.forks}`,
       "",
       "Lens-relevant highlights:",
       ...(highlights.length > 0

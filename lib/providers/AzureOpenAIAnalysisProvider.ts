@@ -13,7 +13,6 @@ import { aggregateConfidence } from "./azure/confidence";
 import { buildLensContextMarkdown } from "./azure/lensContextMapper";
 import { logAnalysisEvent } from "./azure/logger";
 import {
-  buildPortfolioContextCache,
   buildPortfolioSummaryMarkdown,
 } from "./azure/portfolioContextBuilder";
 import {
@@ -52,7 +51,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     const client = this.clientFactory?.() ?? createAzureCompletionClient(config);
     const startedAt = Date.now();
     const lenses = getPortfolioLenses();
-    const repositoryContexts = buildPortfolioContextCache(evidence);
     const portfolioSummary = buildPortfolioSummaryMarkdown(evidence);
     const tokenUsage: TokenUsageTotals = {
       promptTokens: 0,
@@ -74,7 +72,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       evidence,
       lenses,
       portfolioSummary,
-      repositoryContexts,
       tokenUsage,
       requestTokenUsage,
     });
@@ -149,7 +146,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     evidence: UnifiedPortfolioEvidenceModel;
     lenses: AnalysisLens[];
     portfolioSummary: string;
-    repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
     requestTokenUsage: RequestTokenUsage[];
   }): Promise<Array<{ lens: AnalysisLens; result: LensAnalysisResult }>> {
@@ -169,7 +165,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
                   lens,
                   evidence: params.evidence,
                   portfolioSummary: params.portfolioSummary,
-                  repositoryContexts: params.repositoryContexts,
                   tokenUsage: params.tokenUsage,
                   requestTokenUsage: params.requestTokenUsage,
                 }),
@@ -227,14 +222,12 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     lens: AnalysisLens;
     evidence: UnifiedPortfolioEvidenceModel;
     portfolioSummary: string;
-    repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
     requestTokenUsage: RequestTokenUsage[];
   }): Promise<LensAnalysisResult> {
     const lensContext = buildLensContextMarkdown({
       lens: params.lens,
       evidence: params.evidence,
-      repositoryContexts: params.repositoryContexts,
     });
 
     const completion = await params.client.createStructuredCompletion<LensAnalysisResult>(
