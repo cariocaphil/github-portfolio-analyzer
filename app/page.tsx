@@ -5,11 +5,18 @@ import { AnalyzeForm } from "@/components/AnalyzeForm";
 import { CvUploadSection } from "@/components/CvUploadSection";
 import { ReportView } from "@/components/ReportView";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
+import {
+  EMPTY_CV_ANALYSIS_CONTEXT,
+  type CvAnalysisContext,
+} from "@/types/cvAnalysisContext";
 
 export default function HomePage() {
   const [report, setReport] = useState<DeveloperPortfolioReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cvContext, setCvContext] = useState<CvAnalysisContext>(
+    EMPTY_CV_ANALYSIS_CONTEXT,
+  );
 
   async function handleAnalyze(username: string) {
     setLoading(true);
@@ -20,7 +27,13 @@ export default function HomePage() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({
+          username,
+          candidateEvidence: cvContext.candidateEvidence,
+          cvSource: cvContext.cvSource,
+          cvExtractionFailed: cvContext.extractionFailed,
+          cvUploaded: cvContext.cvUploaded,
+        }),
       });
 
       const data = (await response.json()) as
@@ -56,7 +69,7 @@ export default function HomePage() {
 
       <AnalyzeForm onAnalyze={handleAnalyze} loading={loading} />
 
-      <CvUploadSection />
+      <CvUploadSection onCvContextChange={setCvContext} />
 
       {loading && (
         <div

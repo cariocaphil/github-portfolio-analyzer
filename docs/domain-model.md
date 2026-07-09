@@ -152,3 +152,46 @@ Report metadata describes how the report was generated. It includes:
 Metadata belongs to the generated report, not to the Unified Portfolio Evidence Model.
 
 Every observation must be explainable and traceable back to engineering evidence.
+
+---
+
+# Candidate Evidence Model
+
+Represents normalized CV evidence derived from document extraction.
+
+It is produced after:
+
+1. Azure Document Intelligence layout extraction
+2. Azure OpenAI normalization of raw extraction output
+
+Suggested semantic sections include:
+
+* professional summary
+* skills
+* technologies
+* projects
+* work experience
+* education
+* certifications
+* explicit claims
+
+The Candidate Evidence Model is evidence, not a final report. It is used for CV ↔ GitHub comparison and developer preview.
+
+---
+
+# CV Portfolio Alignment Report
+
+Represents the structured comparison between normalized CV evidence and unified GitHub portfolio evidence.
+
+It includes:
+
+* overall alignment score
+* executive summary
+* supported claims
+* weakly supported claims
+* unsupported or not visible claims
+* GitHub strengths missing from the CV
+* CV improvement recommendations
+* alignment metadata (provider, model, timestamp, repository count)
+
+Alignment findings reference CV evidence and GitHub evidence where available and include confidence levels.

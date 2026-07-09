@@ -9,10 +9,18 @@ import {
   validateCvFileSelection,
 } from "@/lib/cv/cvUploadValidation";
 import type { CvUploadSuccess } from "@/types/cv";
+import {
+  EMPTY_CV_ANALYSIS_CONTEXT,
+  type CvAnalysisContext,
+} from "@/types/cvAnalysisContext";
 
 type UploadState = "idle" | "selected" | "uploading" | "success" | "error";
 
-export function CvUploadSection() {
+interface CvUploadSectionProps {
+  onCvContextChange?: (context: CvAnalysisContext) => void;
+}
+
+export function CvUploadSection({ onCvContextChange }: CvUploadSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -27,6 +35,7 @@ export function CvUploadSection() {
     setErrorMessage(null);
     setUploadResult(null);
     setUploadState(file ? "selected" : "idle");
+    onCvContextChange?.(EMPTY_CV_ANALYSIS_CONTEXT);
   }
 
   async function handleUpload() {
@@ -45,6 +54,12 @@ export function CvUploadSection() {
       const result = await uploadCv(selectedFile);
       setUploadResult(result);
       setUploadState("success");
+      onCvContextChange?.({
+        cvUploaded: true,
+        candidateEvidence: result.candidateEvidence,
+        cvSource: result.filename,
+        extractionFailed: false,
+      });
     } catch (error) {
       const message =
         error instanceof CvUploadRequestError
@@ -52,6 +67,12 @@ export function CvUploadSection() {
           : "CV upload failed.";
       setErrorMessage(message);
       setUploadState("error");
+      onCvContextChange?.({
+        cvUploaded: true,
+        candidateEvidence: null,
+        cvSource: selectedFile.name,
+        extractionFailed: true,
+      });
     }
   }
 
@@ -62,8 +83,8 @@ export function CvUploadSection() {
     <section className="mt-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900">CV Cross-Check</h2>
       <p className="mt-2 max-w-2xl text-sm text-slate-600">
-        Upload a CV PDF to prepare a future comparison between stated experience
-        and GitHub evidence.
+        Upload a CV PDF to compare stated experience against GitHub portfolio
+        evidence when you run a portfolio analysis.
       </p>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -103,8 +124,8 @@ export function CvUploadSection() {
           className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
           <p>
-            CV uploaded and processed successfully. Comparison support will be
-            added in a later version.
+            CV uploaded and processed successfully. Run a portfolio analysis to
+            generate the CV ↔ GitHub alignment section.
           </p>
           <p className="mt-2 text-emerald-800">
             Canonical evidence includes {uploadResult.cv.skills} skills,{" "}

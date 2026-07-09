@@ -1,9 +1,16 @@
 import { ExecutiveSummary } from "@/components/ExecutiveSummary";
+import { CvPortfolioAlignmentSection } from "@/components/CvPortfolioAlignmentSection";
 import { ReportNavigation } from "@/components/ReportNavigation";
 import { ReportSectionView } from "@/components/ReportSection";
 import { TechnologyBreakdown } from "@/components/TechnologyBreakdown";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 import { consolidateImprovementSuggestions } from "@/lib/presentation/improvementSuggestions";
+import {
+  getCvAlignmentNavigationLabel,
+  getCvAlignmentSkipMessage,
+  shouldShowCvAlignmentSection,
+  shouldShowCvAlignmentSkipMessage,
+} from "@/lib/presentation/cvPortfolioAlignmentPresentation";
 import {
   buildExecutiveSummary,
   categorizeTechnologies,
@@ -22,6 +29,9 @@ export function ReportView({ report }: ReportViewProps) {
 
   const navigationItems = [
     { id: "executive-summary", label: "Executive Summary" },
+    ...(shouldShowCvAlignmentSection(report)
+      ? [{ id: "cv-github-alignment", label: getCvAlignmentNavigationLabel() }]
+      : []),
     { id: "technology-breakdown", label: "Technology Breakdown" },
     ...sections.map((section) => ({
       id: slugFromLensId(section.lensId),
@@ -83,6 +93,17 @@ export function ReportView({ report }: ReportViewProps) {
           developer={developerSnapshot}
           summary={executiveSummary}
         />
+
+        {shouldShowCvAlignmentSection(report) && report.cvPortfolioAlignment && (
+          <CvPortfolioAlignmentSection alignment={report.cvPortfolioAlignment} />
+        )}
+
+        {shouldShowCvAlignmentSkipMessage(report) && (
+          <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+            <h2 className="text-lg font-semibold">CV ↔ GitHub Alignment</h2>
+            <p className="mt-2 text-sm">{getCvAlignmentSkipMessage(report)}</p>
+          </section>
+        )}
 
         <TechnologyBreakdown groups={technologyGroups} />
 

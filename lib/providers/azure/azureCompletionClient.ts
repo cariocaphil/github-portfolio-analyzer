@@ -16,7 +16,11 @@ export interface StructuredCompletionParams {
   userPrompt: string;
   systemPrompt?: string;
   lensId?: string;
-  requestType?: "lens_analysis" | "executive_summary" | "cv_normalization";
+  requestType?:
+    | "lens_analysis"
+    | "executive_summary"
+    | "cv_normalization"
+    | "cv_alignment";
 }
 
 export interface StructuredCompletionResult<T> {

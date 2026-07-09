@@ -174,10 +174,11 @@ The AI only:
 
 # Future Extension Points
 
-The architecture intentionally separates concerns at two boundaries:
+The architecture intentionally separates concerns at multiple boundaries:
 
 1. **Evidence collection** — how raw engineering data is retrieved
 2. **Portfolio analysis** — how unified evidence is interpreted into a report
+3. **CV alignment** — how normalized CV evidence is compared against portfolio evidence
 
 ## Evidence providers
 
@@ -186,7 +187,6 @@ Future evidence providers could include:
 * GitLab
 * Azure DevOps
 * Personal portfolio websites
-* CVs
 * Technical blogs
 * Conference talks
 
@@ -203,3 +203,68 @@ Future portfolio analysis providers could include:
 * Local LLMs
 
 Registering a new provider should not require changes to repository scanning, evidence extraction, portfolio aggregation, or report presentation.
+
+---
+
+# CV Processing Pipeline
+
+CV processing is independent from GitHub evidence collection but can be compared against it in a later alignment step.
+
+```text
+CV PDF Upload
+
+↓
+
+Azure Blob Storage
+
+↓
+
+Azure Document Intelligence (layout extraction)
+
+↓
+
+Raw CV Extraction (document-oriented, debug only)
+
+↓
+
+Azure OpenAI CV Normalization
+
+↓
+
+Candidate Evidence Model (canonical CV evidence)
+```
+
+CV extraction and normalization failures do not block GitHub portfolio analysis.
+
+---
+
+# CV ↔ GitHub Portfolio Alignment
+
+After GitHub portfolio evidence has been generated and normalized CV evidence is available, the application can run a CV Portfolio Alignment step.
+
+```text
+Candidate Evidence Model
+
++
+
+Unified Portfolio Evidence Model
+
+↓
+
+Azure OpenAI CV Portfolio Alignment
+
+↓
+
+CvPortfolioAlignmentReport
+```
+
+The alignment step:
+
+* compares structured CV claims against observable GitHub portfolio evidence
+* classifies findings as supported, weakly supported, unsupported/not visible, or missing from the CV
+* produces practical CV improvement recommendations
+* uses constructive, hiring-manager-friendly language
+
+Alignment is optional. If no CV was uploaded, portfolio analysis behaves unchanged and no alignment section is shown. If CV extraction or normalization failed, portfolio analysis still completes and the report shows a graceful skip message.
+
+Alignment logic lives outside UI components and does not make the CV the primary source of truth.
