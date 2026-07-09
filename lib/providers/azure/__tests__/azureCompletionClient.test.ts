@@ -92,6 +92,14 @@ describe("azureCompletionClient fallbacks", () => {
     expect(responsesCreate).toHaveBeenCalledTimes(2);
     expect(responsesCreate.mock.calls[1][0]).not.toHaveProperty("temperature");
     expect(
+      String(responsesCreate.mock.calls[1][0].input).includes(
+        "Respond with JSON matching this schema exactly:",
+      ),
+    ).toBe(false);
+    expect(
+      String(responsesCreate.mock.calls[1][0].input).includes("Analyze this portfolio"),
+    ).toBe(true);
+    expect(
       logSpy.mock.calls.some(([message]) => {
         if (typeof message !== "string") return false;
         try {
@@ -108,10 +116,16 @@ describe("azureCompletionClient fallbacks", () => {
     const responsesCreate = vi
       .fn()
       .mockRejectedValue(new Error("Responses API route not found"));
-    const chatCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(sampleResult) } }],
-      usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
-    });
+    const chatCreate = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 400,
+        message: "Unsupported parameter: 'response_format' is not supported with this model.",
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify(sampleResult) } }],
+        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      });
 
     const client = {
       responses: { create: responsesCreate },
@@ -139,7 +153,14 @@ describe("azureCompletionClient fallbacks", () => {
     );
 
     expect(result.parsed.score).toBe(84);
-    expect(chatCreate).toHaveBeenCalled();
+    expect(chatCreate).toHaveBeenCalledTimes(2);
+    const chatPayload = chatCreate.mock.calls[1][0];
+    const userMessage = chatPayload.messages?.find(
+      (message: { role?: string; content?: string }) => message.role === "user",
+    )?.content;
+    expect(String(userMessage)).toContain(
+      "Return valid JSON only. Match this schema exactly:",
+    );
   });
 
   it("parses JSON embedded in text", () => {

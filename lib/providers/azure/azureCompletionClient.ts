@@ -309,6 +309,10 @@ function buildUserContent(
   params: StructuredCompletionParams,
   structuredOutput: RequestStrategy["structuredOutput"],
 ): string {
+  if (structuredOutput === "json_schema") {
+    return params.userPrompt;
+  }
+
   if (structuredOutput === "plain") {
     return `${params.userPrompt}\n\nReturn valid JSON only. Match this schema exactly:\n${JSON.stringify(params.schema)}`;
   }
