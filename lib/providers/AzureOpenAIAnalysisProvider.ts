@@ -32,6 +32,7 @@ import {
 import type {
   ExecutiveSummaryResult,
   LensAnalysisResult,
+  RequestTokenUsage,
   TokenUsageTotals,
 } from "./azure/types";
 
@@ -58,6 +59,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       completionTokens: 0,
       totalTokens: 0,
     };
+    const requestTokenUsage: RequestTokenUsage[] = [];
 
     logAnalysisEvent({
       event: "portfolio_analysis_started",
@@ -74,6 +76,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       portfolioSummary,
       repositoryContexts,
       tokenUsage,
+      requestTokenUsage,
     });
 
     const executiveSummary = await withRetry(
@@ -83,6 +86,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
           portfolioSummary,
           lensResults,
           tokenUsage,
+          requestTokenUsage,
         }),
       {
         maxRetries: 3,
@@ -132,6 +136,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
         promptTokens: tokenUsage.promptTokens,
         completionTokens: tokenUsage.completionTokens,
         totalTokens: tokenUsage.totalTokens,
+        requestTokenUsage,
         averageConfidence: confidence.averageConfidence,
         highestConfidence: confidence.highestConfidence,
         lowestConfidence: confidence.lowestConfidence,
@@ -146,6 +151,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     portfolioSummary: string;
     repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<Array<{ lens: AnalysisLens; result: LensAnalysisResult }>> {
     const completed = new Map<string, LensAnalysisResult>();
     let remaining = [...params.lenses];
@@ -165,6 +171,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
                   portfolioSummary: params.portfolioSummary,
                   repositoryContexts: params.repositoryContexts,
                   tokenUsage: params.tokenUsage,
+                  requestTokenUsage: params.requestTokenUsage,
                 }),
               {
                 maxRetries: 3,
@@ -222,6 +229,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     portfolioSummary: string;
     repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<LensAnalysisResult> {
     const lensContext = buildLensContextMarkdown({
       lens: params.lens,
@@ -248,6 +256,14 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     params.tokenUsage.promptTokens += completion.usage.promptTokens;
     params.tokenUsage.completionTokens += completion.usage.completionTokens;
     params.tokenUsage.totalTokens += completion.usage.totalTokens;
+    params.requestTokenUsage.push({
+      requestType: "lens_analysis",
+      lensId: params.lens.id,
+      schemaName: `lens_analysis_${params.lens.id}`,
+      promptTokens: completion.usage.promptTokens,
+      completionTokens: completion.usage.completionTokens,
+      totalTokens: completion.usage.totalTokens,
+    });
 
     return completion.parsed;
   }
@@ -257,6 +273,7 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     portfolioSummary: string;
     lensResults: Array<{ lens: AnalysisLens; result: LensAnalysisResult }>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<ExecutiveSummaryResult> {
     const completion =
       await params.client.createStructuredCompletion<ExecutiveSummaryResult>({
@@ -272,6 +289,13 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     params.tokenUsage.promptTokens += completion.usage.promptTokens;
     params.tokenUsage.completionTokens += completion.usage.completionTokens;
     params.tokenUsage.totalTokens += completion.usage.totalTokens;
+    params.requestTokenUsage.push({
+      requestType: "executive_summary",
+      schemaName: "executive_summary",
+      promptTokens: completion.usage.promptTokens,
+      completionTokens: completion.usage.completionTokens,
+      totalTokens: completion.usage.totalTokens,
+    });
 
     return completion.parsed;
   }

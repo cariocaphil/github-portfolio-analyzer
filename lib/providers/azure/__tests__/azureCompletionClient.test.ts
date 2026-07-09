@@ -51,6 +51,7 @@ describe("azureCompletionClient fallbacks", () => {
   });
 
   it("retries without temperature and then succeeds via Responses API", async () => {
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const responsesCreate = vi
       .fn()
       .mockRejectedValueOnce({
@@ -90,6 +91,17 @@ describe("azureCompletionClient fallbacks", () => {
     expect(result.parsed.summary).toBe("Summary");
     expect(responsesCreate).toHaveBeenCalledTimes(2);
     expect(responsesCreate.mock.calls[1][0]).not.toHaveProperty("temperature");
+    expect(
+      logSpy.mock.calls.some(([message]) => {
+        if (typeof message !== "string") return false;
+        try {
+          const parsed = JSON.parse(message) as { event?: string; promptChars?: number };
+          return parsed.event === "azure_request_prompt_size" && (parsed.promptChars ?? 0) > 0;
+        } catch {
+          return false;
+        }
+      }),
+    ).toBe(true);
   });
 
   it("falls back from structured outputs to plain JSON via chat completions", async () => {

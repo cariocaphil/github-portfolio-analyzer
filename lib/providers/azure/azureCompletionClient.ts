@@ -8,7 +8,7 @@ import {
   extractAzureFailureDiagnostics,
   isResponsesApiUnsupported,
 } from "./azureErrorDiagnostics";
-import { logAzureFailure } from "./logger";
+import { logAnalysisEvent, logAzureFailure } from "./logger";
 
 export interface StructuredCompletionParams {
   schemaName: string;
@@ -182,20 +182,33 @@ async function executeStrategy<T>(
   context: RequestContext,
   strategy: RequestStrategy,
 ): Promise<StructuredCompletionResult<T>> {
+  const userContent = buildUserContent(context.params, strategy.structuredOutput);
+  const promptChars = AZURE_SYSTEM_PROMPT.length + userContent.length;
+  logAnalysisEvent({
+    event: "azure_request_prompt_size",
+    model: context.config.deployment,
+    apiVersion: context.config.apiVersion,
+    requestType: context.params.requestType ?? "structured_completion",
+    lensId: context.params.lensId,
+    schemaName: context.params.schemaName,
+    strategy: describeStrategy(strategy),
+    promptChars,
+    estimatedPromptTokens: estimatePromptTokens(promptChars),
+  });
+
   if (strategy.api === "responses") {
-    return executeResponsesRequest<T>(client, context, strategy);
+    return executeResponsesRequest<T>(client, context, strategy, userContent);
   }
 
-  return executeChatRequest<T>(client, context, strategy);
+  return executeChatRequest<T>(client, context, strategy, userContent);
 }
 
 async function executeResponsesRequest<T>(
   client: OpenAI,
   context: RequestContext,
   strategy: RequestStrategy,
+  userContent: string,
 ): Promise<StructuredCompletionResult<T>> {
-  const userContent = buildUserContent(context.params, strategy.structuredOutput);
-
   const body: Record<string, unknown> = {
     model: context.config.deployment,
     instructions: AZURE_SYSTEM_PROMPT,
@@ -243,8 +256,8 @@ async function executeChatRequest<T>(
   client: OpenAI,
   context: RequestContext,
   strategy: RequestStrategy,
+  userContent: string,
 ): Promise<StructuredCompletionResult<T>> {
-  const userContent = buildUserContent(context.params, strategy.structuredOutput);
   const body: Record<string, unknown> = {
     model: context.config.deployment,
     messages: [
@@ -301,6 +314,11 @@ function buildUserContent(
   }
 
   return `${params.userPrompt}\n\nRespond with JSON matching this schema exactly:\n${JSON.stringify(params.schema)}`;
+}
+
+function estimatePromptTokens(charCount: number): number {
+  // Simple approximation for diagnostics and trend tracking.
+  return Math.ceil(charCount / 4);
 }
 
 function mapUsage(usage?: {

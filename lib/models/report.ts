@@ -49,6 +49,14 @@ export interface ReportMetadata {
   averageConfidence?: number;
   highestConfidence?: number;
   lowestConfidence?: number;
+  requestTokenUsage?: Array<{
+    requestType: "lens_analysis" | "executive_summary";
+    lensId?: string;
+    schemaName: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  }>;
 }
 
 export interface DeveloperPortfolioReport {

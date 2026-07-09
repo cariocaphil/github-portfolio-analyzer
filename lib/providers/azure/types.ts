@@ -31,6 +31,12 @@ export interface TokenUsageTotals {
   totalTokens: number;
 }
 
+export interface RequestTokenUsage extends TokenUsageTotals {
+  requestType: "lens_analysis" | "executive_summary";
+  lensId?: string;
+  schemaName: string;
+}
+
 export interface AzureOpenAIConfig {
   endpoint: string;
   apiKey: string;
