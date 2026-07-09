@@ -14,8 +14,9 @@ export interface StructuredCompletionParams {
   schemaName: string;
   schema: Record<string, unknown>;
   userPrompt: string;
+  systemPrompt?: string;
   lensId?: string;
-  requestType?: "lens_analysis" | "executive_summary";
+  requestType?: "lens_analysis" | "executive_summary" | "cv_normalization";
 }
 
 export interface StructuredCompletionResult<T> {
@@ -186,8 +187,9 @@ async function executeStrategy<T>(
   context: RequestContext,
   strategy: RequestStrategy,
 ): Promise<StructuredCompletionResult<T>> {
+  const systemPrompt = context.params.systemPrompt ?? AZURE_SYSTEM_PROMPT;
   const userContent = buildUserContent(context.params, strategy.structuredOutput);
-  const promptChars = AZURE_SYSTEM_PROMPT.length + userContent.length;
+  const promptChars = systemPrompt.length + userContent.length;
   logAnalysisEvent({
     event: "azure_request_prompt_size",
     model: context.config.deployment,
@@ -201,10 +203,10 @@ async function executeStrategy<T>(
   });
 
   if (strategy.api === "responses") {
-    return executeResponsesRequest<T>(client, context, strategy, userContent);
+    return executeResponsesRequest<T>(client, context, strategy, userContent, systemPrompt);
   }
 
-  return executeChatRequest<T>(client, context, strategy, userContent);
+  return executeChatRequest<T>(client, context, strategy, userContent, systemPrompt);
 }
 
 async function executeResponsesRequest<T>(
@@ -212,10 +214,11 @@ async function executeResponsesRequest<T>(
   context: RequestContext,
   strategy: RequestStrategy,
   userContent: string,
+  systemPrompt: string,
 ): Promise<StructuredCompletionResult<T>> {
   const body: Record<string, unknown> = {
     model: context.config.deployment,
-    instructions: AZURE_SYSTEM_PROMPT,
+    instructions: systemPrompt,
     input: userContent,
   };
 
@@ -261,11 +264,12 @@ async function executeChatRequest<T>(
   context: RequestContext,
   strategy: RequestStrategy,
   userContent: string,
+  systemPrompt: string,
 ): Promise<StructuredCompletionResult<T>> {
   const body: Record<string, unknown> = {
     model: context.config.deployment,
     messages: [
-      { role: "system", content: AZURE_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
     ],
   };

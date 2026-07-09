@@ -7,6 +7,7 @@ const TECHNOLOGY_ALIASES: Record<string, string> = {
   ts: "TypeScript",
   typescript: "TypeScript",
   reactjs: "React",
+  "react.js": "React",
   "next": "Next.js",
   nextjs: "Next.js",
   "next.js": "Next.js",
