@@ -1,6 +1,7 @@
 import type { RepositoryEvidenceProfile } from "@/lib/models/evidence";
 import type { UnifiedPortfolioEvidenceModel } from "@/lib/models/portfolio";
 import { daysSince } from "@/lib/analysis/utils";
+import { MAX_LENS_PORTFOLIO_TECHNOLOGIES } from "./azureContextLimits";
 
 export interface RepositoryContext {
   repository: string;
@@ -142,4 +143,65 @@ export function buildPortfolioSummaryMarkdown(
     `Topics: ${evidence.summary.topics.join(", ") || "None"}`,
     `Technologies: ${evidence.aggregatedTechnologies.slice(0, 25).join(", ") || "None"}`,
   ].join("\n");
+}
+
+export function buildLensPortfolioSummaryMarkdown(
+  lensId: string,
+  evidence: UnifiedPortfolioEvidenceModel,
+): string {
+  const { summary } = evidence;
+  const common = [`Repositories analyzed: ${summary.totalRepositories}`];
+
+  if (lensId === "technical-breadth") {
+    return [
+      ...common,
+      `Primary languages: ${summary.primaryLanguages.join(", ") || "None"}`,
+      `Technologies: ${evidence.aggregatedTechnologies.slice(0, MAX_LENS_PORTFOLIO_TECHNOLOGIES).join(", ") || "None"}`,
+    ].join("\n");
+  }
+
+  if (lensId === "project-complexity") {
+    return [
+      ...common,
+      `Repositories with tests: ${summary.repositoriesWithTests}`,
+      `Repositories with CI: ${summary.repositoriesWithCi}`,
+      `Repositories with Docker: ${summary.repositoriesWithDocker}`,
+      `Repositories with deployment signals: ${summary.repositoriesWithDeploymentConfig}`,
+    ].join("\n");
+  }
+
+  if (lensId === "portfolio-documentation") {
+    return [
+      ...common,
+      `Repositories with README: ${summary.repositoriesWithReadme}`,
+    ].join("\n");
+  }
+
+  if (
+    lensId === "portfolio-testing-quality" ||
+    lensId === "engineering-practices"
+  ) {
+    return [
+      ...common,
+      `Repositories with tests: ${summary.repositoriesWithTests}`,
+      `Repositories with CI: ${summary.repositoriesWithCi}`,
+    ].join("\n");
+  }
+
+  if (lensId === "deployment-delivery") {
+    return [
+      ...common,
+      `Repositories with Docker: ${summary.repositoriesWithDocker}`,
+      `Repositories with deployment signals: ${summary.repositoriesWithDeploymentConfig}`,
+    ].join("\n");
+  }
+
+  if (lensId === "project-evolution") {
+    return [
+      ...common,
+      `Primary languages: ${summary.primaryLanguages.join(", ") || "None"}`,
+    ].join("\n");
+  }
+
+  return common.join("\n");
 }

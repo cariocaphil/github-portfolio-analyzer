@@ -13,7 +13,7 @@ import { aggregateConfidence } from "./azure/confidence";
 import { buildLensContextMarkdown } from "./azure/lensContextMapper";
 import { logAnalysisEvent } from "./azure/logger";
 import {
-  buildPortfolioSummaryMarkdown,
+  buildLensPortfolioSummaryMarkdown,
 } from "./azure/portfolioContextBuilder";
 import {
   buildExecutiveSummaryUserPrompt,
@@ -51,7 +51,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     const client = this.clientFactory?.() ?? createAzureCompletionClient(config);
     const startedAt = Date.now();
     const lenses = getPortfolioLenses();
-    const portfolioSummary = buildPortfolioSummaryMarkdown(evidence);
     const tokenUsage: TokenUsageTotals = {
       promptTokens: 0,
       completionTokens: 0,
@@ -71,7 +70,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       client,
       evidence,
       lenses,
-      portfolioSummary,
       tokenUsage,
       requestTokenUsage,
     });
@@ -80,7 +78,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       () =>
         this.analyzeExecutiveSummary({
           client,
-          portfolioSummary,
           lensResults,
           tokenUsage,
           requestTokenUsage,
@@ -146,7 +143,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     client: AzureCompletionClient;
     evidence: UnifiedPortfolioEvidenceModel;
     lenses: AnalysisLens[];
-    portfolioSummary: string;
     tokenUsage: TokenUsageTotals;
     requestTokenUsage: RequestTokenUsage[];
   }): Promise<Array<{ lens: AnalysisLens; result: LensAnalysisResult }>> {
@@ -165,7 +161,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
                   client: params.client,
                   lens,
                   evidence: params.evidence,
-                  portfolioSummary: params.portfolioSummary,
                   tokenUsage: params.tokenUsage,
                   requestTokenUsage: params.requestTokenUsage,
                 }),
@@ -222,7 +217,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     client: AzureCompletionClient;
     lens: AnalysisLens;
     evidence: UnifiedPortfolioEvidenceModel;
-    portfolioSummary: string;
     tokenUsage: TokenUsageTotals;
     requestTokenUsage: RequestTokenUsage[];
   }): Promise<LensAnalysisResult> {
@@ -241,7 +235,10 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
           lensTitle: params.lens.title,
           guidingQuestion: params.lens.guidingQuestion,
           promptInstructions: params.lens.promptInstructions,
-          portfolioSummary: params.portfolioSummary,
+          lensPortfolioSummary: buildLensPortfolioSummaryMarkdown(
+            params.lens.id,
+            params.evidence,
+          ),
           lensContext,
         }),
       },
@@ -264,7 +261,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
 
   private async analyzeExecutiveSummary(params: {
     client: AzureCompletionClient;
-    portfolioSummary: string;
     lensResults: Array<{ lens: AnalysisLens; result: LensAnalysisResult }>;
     tokenUsage: TokenUsageTotals;
     requestTokenUsage: RequestTokenUsage[];
@@ -275,7 +271,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
         schema: EXECUTIVE_SUMMARY_JSON_SCHEMA,
         requestType: "executive_summary",
         userPrompt: buildExecutiveSummaryUserPrompt({
-          portfolioSummary: params.portfolioSummary,
           lensAnalyses: formatLensAnalysesForExecutiveSummary(params.lensResults),
         }),
       });

@@ -8,6 +8,12 @@ import type {
 } from "@/lib/models/report";
 import type { AnalysisLens } from "@/lib/models/report";
 import { clampConfidence, confidenceToLevel } from "./confidence";
+import {
+  MAX_EXECUTIVE_SUMMARY_CONCERNS,
+  MAX_EXECUTIVE_SUMMARY_RECOMMENDATIONS,
+  MAX_EXECUTIVE_SUMMARY_STRENGTHS,
+  MAX_LENS_RESULTS_FOR_EXECUTIVE_SUMMARY,
+} from "./azureContextLimits";
 import type {
   ExecutiveSummaryResult,
   LensAnalysisResult,
@@ -135,17 +141,19 @@ export function mapToDeveloperPortfolioReport(params: {
 export function formatLensAnalysesForExecutiveSummary(
   lensResults: Array<{ lens: AnalysisLens; result: LensAnalysisResult }>,
 ): string {
-  return lensResults
-    .map(({ lens, result }) =>
-      [
-        `### ${lens.title}`,
-        `Score: ${clampConfidence(result.score)}`,
-        `Confidence: ${clampConfidence(result.confidence)}`,
-        `Summary: ${result.summary}`,
-        `Strengths: ${result.strengths.join("; ") || "None"}`,
-        `Concerns: ${result.concerns.join("; ") || "None"}`,
-        `Recommendations: ${result.recommendations.join("; ") || "None"}`,
-      ].join("\n"),
-    )
-    .join("\n\n");
+  const compact = lensResults
+    .slice(0, MAX_LENS_RESULTS_FOR_EXECUTIVE_SUMMARY)
+    .map(({ lens, result }) => ({
+      lensId: lens.id,
+      score: clampConfidence(result.score),
+      summary: result.summary,
+      topStrengths: result.strengths.slice(0, MAX_EXECUTIVE_SUMMARY_STRENGTHS),
+      topConcerns: result.concerns.slice(0, MAX_EXECUTIVE_SUMMARY_CONCERNS),
+      topRecommendations: result.recommendations.slice(
+        0,
+        MAX_EXECUTIVE_SUMMARY_RECOMMENDATIONS,
+      ),
+    }));
+
+  return JSON.stringify(compact, null, 2);
 }

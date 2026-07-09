@@ -36,5 +36,6 @@ describe("lensContextMapper", () => {
 
     expect(markdown).toContain("Uses React and TypeScript");
     expect(markdown).not.toContain("Important README excerpt:");
+    expect(markdown).not.toContain("Stars/Forks:");
   });
 });
