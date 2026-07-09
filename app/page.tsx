@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AnalyzeForm } from "@/components/AnalyzeForm";
+import { CvUploadSection } from "@/components/CvUploadSection";
 import { ReportView } from "@/components/ReportView";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 
@@ -54,6 +55,8 @@ export default function HomePage() {
       </header>
 
       <AnalyzeForm onAnalyze={handleAnalyze} loading={loading} />
+
+      <CvUploadSection />
 
       {loading && (
         <div
