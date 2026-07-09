@@ -7,6 +7,10 @@ export interface RepositoryContext {
   markdown: string;
 }
 
+const README_EXCERPT_CHAR_LIMIT = 250;
+const ENGINEERING_EVIDENCE_FACT_LIMIT = 4;
+const INTERESTING_OBSERVATION_LIMIT = 3;
+
 function observationText(
   profile: RepositoryEvidenceProfile,
   lensId: string,
@@ -45,7 +49,7 @@ function readmeExcerpt(profile: RepositoryEvidenceProfile): string {
   if (!excerpt) {
     return "README present but no excerpt extracted.";
   }
-  return excerpt.slice(0, 500);
+  return excerpt.slice(0, README_EXCERPT_CHAR_LIMIT);
 }
 
 export function buildRepositoryContext(
@@ -73,7 +77,7 @@ export function buildRepositoryContext(
   const structure = observationText(profile, "project-structure");
   const activity = observationText(profile, "activity-evolution");
   const interestingObservations = profile.observations
-    .slice(0, 6)
+    .slice(0, INTERESTING_OBSERVATION_LIMIT)
     .map((observation) => `- ${observation.observation}`);
 
   const markdown = [
@@ -96,7 +100,7 @@ export function buildRepositoryContext(
     readmeExcerpt(profile),
     "",
     "Engineering Evidence:",
-    ...evidenceFacts(profile, () => true, 8).map((fact) => `- ${fact}`),
+    ...evidenceFacts(profile, () => true, ENGINEERING_EVIDENCE_FACT_LIMIT).map((fact) => `- ${fact}`),
     "",
     "Interesting Observations:",
     ...(interestingObservations.length > 0
