@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { analyzeCv } from "@/lib/azureDocumentIntelligence";
+import { normalizeCvExtraction } from "@/lib/azureCvNormalizer";
 import { uploadCv, type CvBlobUploadResult } from "@/lib/azureBlobStorage";
 import {
   BlobConfigurationError,
   BlobUploadError,
 } from "@/lib/azure/blobStorageErrors";
+import { buildCandidateEvidenceSummary } from "@/lib/cv/buildCandidateEvidenceSummary";
 import { buildCvExtractionSummary } from "@/lib/cv/buildCvExtractionSummary";
+import { CvNormalizationError } from "@/lib/azure/cvNormalizerErrors";
 import {
   DocumentAnalysisError,
   DocumentAuthenticationError,
@@ -76,10 +79,30 @@ export async function POST(request: Request) {
       blobName: uploadResult.blobName,
     });
 
-    // TODO V7.4:
-    // Compare extracted CandidateCv against GitHub portfolio evidence.
+    const rawExtraction = analysisResult.candidateCv;
+    let candidateEvidence = null;
+    let normalizationError: string | undefined;
 
-    const extractedCv = analysisResult.candidateCv;
+    try {
+      const normalizationResult = await normalizeCvExtraction({
+        rawExtraction,
+        metadata: {
+          filename: uploadResult.filename,
+          blobName: uploadResult.blobName,
+          pagesAnalyzed: analysisResult.pagesAnalyzed,
+          documentModelId: analysisResult.modelId,
+        },
+      });
+      candidateEvidence = normalizationResult.candidateEvidence;
+    } catch (error) {
+      normalizationError =
+        error instanceof CvNormalizationError
+          ? error.message
+          : "Azure OpenAI could not normalize the extracted CV.";
+    }
+
+    // TODO V7.5:
+    // Compare CandidateEvidenceModel against GitHub portfolio evidence.
 
     return NextResponse.json({
       success: true,
@@ -87,8 +110,12 @@ export async function POST(request: Request) {
       url: uploadResult.url,
       filename: uploadResult.filename,
       size: uploadResult.size,
-      cv: buildCvExtractionSummary(extractedCv),
-      extractedCv,
+      rawExtraction,
+      candidateEvidence,
+      normalizationError,
+      cv: candidateEvidence
+        ? buildCandidateEvidenceSummary(candidateEvidence)
+        : buildCvExtractionSummary(rawExtraction),
     });
   } catch (error) {
     if (error instanceof BlobConfigurationError) {

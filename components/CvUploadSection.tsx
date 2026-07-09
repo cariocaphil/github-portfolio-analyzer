@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CvExtractionDebugPanel } from "@/components/CvExtractionDebugPanel";
+import { CvDeveloperPreview } from "@/components/CvDeveloperPreview";
 import { CvUploadRequestError, uploadCv } from "@/lib/cvUploadClient";
 import {
   CV_PDF_MIME_TYPE,
@@ -103,17 +103,24 @@ export function CvUploadSection() {
           className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
           <p>
-            CV uploaded and analyzed successfully. Comparison support will be
+            CV uploaded and processed successfully. Comparison support will be
             added in a later version.
           </p>
           <p className="mt-2 text-emerald-800">
-            Extracted {uploadResult.cv.skills} skills,{" "}
+            Canonical evidence includes {uploadResult.cv.skills} skills,{" "}
             {uploadResult.cv.employmentHistory} roles, and{" "}
             {uploadResult.cv.education} education entries.
           </p>
-          <CvExtractionDebugPanel
-            extractedCv={uploadResult.extractedCv}
+          {uploadResult.normalizationError && (
+            <p className="mt-2 text-amber-800">
+              Normalization warning: {uploadResult.normalizationError}
+            </p>
+          )}
+          <CvDeveloperPreview
+            rawExtraction={uploadResult.rawExtraction}
+            candidateEvidence={uploadResult.candidateEvidence}
             summary={uploadResult.cv}
+            normalizationError={uploadResult.normalizationError}
           />
         </div>
       )}

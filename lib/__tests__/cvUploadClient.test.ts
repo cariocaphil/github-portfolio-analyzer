@@ -2,6 +2,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CvUploadRequestError, uploadCv } from "@/lib/cvUploadClient";
 import { CV_PDF_MIME_TYPE } from "@/lib/cv/cvUploadValidation";
 
+const emptyRawExtraction = {
+  personalInformation: { websites: [] },
+  skills: [],
+  employmentHistory: [],
+  education: [],
+  certifications: [],
+  languages: [],
+  projects: [],
+};
+
+const emptyCandidateEvidence = {
+  personalInformation: { confidence: 0.9, websites: [] },
+  executiveSummary: { confidence: 0.8 },
+  skills: { confidence: 0.85, entries: [] },
+  employmentHistory: { confidence: 0.9, entries: [] },
+  education: { confidence: 0.7, entries: [] },
+  certifications: { confidence: 0.6, entries: [] },
+  projects: { confidence: 0.65, entries: [] },
+  languages: { confidence: 0.75, entries: [] },
+};
+
 describe("uploadCv", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -31,15 +52,8 @@ describe("uploadCv", () => {
             languages: 2,
             projects: 3,
           },
-          extractedCv: {
-            personalInformation: { websites: [] },
-            skills: [],
-            employmentHistory: [],
-            education: [],
-            certifications: [],
-            languages: [],
-            projects: [],
-          },
+          rawExtraction: emptyRawExtraction,
+          candidateEvidence: emptyCandidateEvidence,
         }),
       }),
     );
@@ -58,15 +72,8 @@ describe("uploadCv", () => {
         languages: 2,
         projects: 3,
       },
-      extractedCv: {
-        personalInformation: { websites: [] },
-        skills: [],
-        employmentHistory: [],
-        education: [],
-        certifications: [],
-        languages: [],
-        projects: [],
-      },
+      rawExtraction: emptyRawExtraction,
+      candidateEvidence: emptyCandidateEvidence,
     });
   });
 
