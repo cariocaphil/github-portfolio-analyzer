@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { CvExtractionDebugPanel } from "@/components/CvExtractionDebugPanel";
 import { CvUploadRequestError, uploadCv } from "@/lib/cvUploadClient";
 import {
   CV_PDF_MIME_TYPE,
   formatCvFileSize,
   validateCvFileSelection,
 } from "@/lib/cv/cvUploadValidation";
+import type { CvUploadSuccess } from "@/types/cv";
 
 type UploadState = "idle" | "selected" | "uploading" | "success" | "error";
 
@@ -15,11 +17,15 @@ export function CvUploadSection() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<CvUploadSuccess | null>(
+    null,
+  );
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
     setErrorMessage(null);
+    setUploadResult(null);
     setUploadState(file ? "selected" : "idle");
   }
 
@@ -33,9 +39,11 @@ export function CvUploadSection() {
 
     setUploadState("uploading");
     setErrorMessage(null);
+    setUploadResult(null);
 
     try {
-      await uploadCv(selectedFile);
+      const result = await uploadCv(selectedFile);
+      setUploadResult(result);
       setUploadState("success");
     } catch (error) {
       const message =
@@ -89,14 +97,25 @@ export function CvUploadSection() {
         </p>
       )}
 
-      {uploadState === "success" && (
-        <p
+      {uploadState === "success" && uploadResult && (
+        <div
           role="status"
           className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
-          CV uploaded successfully. Comparison support will be added in a
-          later version.
-        </p>
+          <p>
+            CV uploaded and analyzed successfully. Comparison support will be
+            added in a later version.
+          </p>
+          <p className="mt-2 text-emerald-800">
+            Extracted {uploadResult.cv.skills} skills,{" "}
+            {uploadResult.cv.employmentHistory} roles, and{" "}
+            {uploadResult.cv.education} education entries.
+          </p>
+          <CvExtractionDebugPanel
+            extractedCv={uploadResult.extractedCv}
+            summary={uploadResult.cv}
+          />
+        </div>
       )}
 
       {uploadState === "error" && errorMessage && (

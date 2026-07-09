@@ -23,6 +23,23 @@ describe("uploadCv", () => {
           url: "https://example.blob.core.windows.net/cvs/2026-07-09/8c5a3f2e-cv.pdf",
           filename: "philippe-dijon-cv.pdf",
           size: 3,
+          cv: {
+            skills: 18,
+            employmentHistory: 5,
+            education: 2,
+            certifications: 1,
+            languages: 2,
+            projects: 3,
+          },
+          extractedCv: {
+            personalInformation: { websites: [] },
+            skills: [],
+            employmentHistory: [],
+            education: [],
+            certifications: [],
+            languages: [],
+            projects: [],
+          },
         }),
       }),
     );
@@ -33,6 +50,23 @@ describe("uploadCv", () => {
       url: "https://example.blob.core.windows.net/cvs/2026-07-09/8c5a3f2e-cv.pdf",
       filename: "philippe-dijon-cv.pdf",
       size: 3,
+      cv: {
+        skills: 18,
+        employmentHistory: 5,
+        education: 2,
+        certifications: 1,
+        languages: 2,
+        projects: 3,
+      },
+      extractedCv: {
+        personalInformation: { websites: [] },
+        skills: [],
+        employmentHistory: [],
+        education: [],
+        certifications: [],
+        languages: [],
+        projects: [],
+      },
     });
   });
 
