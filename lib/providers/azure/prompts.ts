@@ -37,7 +37,7 @@ export function buildExecutiveSummaryUserPrompt(params: {
   lensAnalyses: string;
 }): string {
   return [
-    "Synthesize a portfolio-level executive summary from completed lens analyses.",
+    "Synthesize portfolio-level growth opportunities and final recommendations from completed lens analyses.",
     "",
     "Portfolio summary:",
     params.portfolioSummary,
@@ -45,7 +45,7 @@ export function buildExecutiveSummaryUserPrompt(params: {
     "Completed lens analyses:",
     params.lensAnalyses,
     "",
-    "Return JSON with executiveSummary, careerLevel, developerProfile, overallStrengths, growthOpportunities, and finalRecommendations.",
-    "Career level should be evidence-based (for example: Emerging, Mid-level, Senior).",
+    "Return JSON with growthOpportunities and finalRecommendations.",
+    "Both arrays must be grounded in the provided evidence.",
   ].join("\n");
 }

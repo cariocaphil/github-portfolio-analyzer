@@ -17,10 +17,6 @@ export interface LensAnalysisResult {
 }
 
 export interface ExecutiveSummaryResult {
-  executiveSummary: string;
-  careerLevel: string;
-  developerProfile: string;
-  overallStrengths: string[];
   growthOpportunities: string[];
   finalRecommendations: string[];
 }
