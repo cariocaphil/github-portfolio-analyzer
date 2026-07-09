@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReportSection } from "@/lib/models/report";
 import {
+  getDistinctKeyFindings,
   groupEvidenceByRepository,
   slugFromLensId,
   toSectionSummary,
@@ -17,7 +18,7 @@ export function ReportSectionView({ section }: ReportSectionViewProps) {
   const scoreSummary = toSectionSummary(section);
   const repositoryGroups = groupEvidenceByRepository(section);
 
-  const keyFindings = section.observations.slice(0, 3);
+  const keyFindings = getDistinctKeyFindings(section, scoreSummary.summary, 3);
 
   function toggleRepository(repository: string) {
     setOpenRepositories((current) => ({

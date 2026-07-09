@@ -150,6 +150,68 @@ export function toSectionSummary(section: ReportSection): ScoredSection {
   };
 }
 
+function normalizeComparableText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shouldDropAsSummaryDuplicate(
+  summary: string,
+  candidate: string,
+): boolean {
+  const normalizedSummary = normalizeComparableText(summary);
+  const normalizedCandidate = normalizeComparableText(candidate);
+
+  if (!normalizedSummary || !normalizedCandidate) {
+    return false;
+  }
+
+  if (normalizedSummary === normalizedCandidate) {
+    return true;
+  }
+
+  const summaryWordCount = normalizedSummary.split(" ").length;
+  const candidateWordCount = normalizedCandidate.split(" ").length;
+  const bothLong = summaryWordCount >= 8 && candidateWordCount >= 8;
+
+  if (
+    bothLong &&
+    (normalizedSummary.includes(normalizedCandidate) ||
+      normalizedCandidate.includes(normalizedSummary))
+  ) {
+    return true;
+  }
+
+  if (!bothLong) {
+    return false;
+  }
+
+  const summaryTokens = new Set(normalizedSummary.split(" "));
+  const candidateTokens = new Set(normalizedCandidate.split(" "));
+  const overlapCount = [...candidateTokens].filter((token) =>
+    summaryTokens.has(token),
+  ).length;
+  const overlapRatio = overlapCount / Math.max(candidateTokens.size, 1);
+
+  return overlapRatio >= 0.85;
+}
+
+export function getDistinctKeyFindings(
+  section: ReportSection,
+  summary: string,
+  limit = 3,
+): ReportObservation[] {
+  return section.observations
+    .filter(
+      (observation) =>
+        !shouldDropAsSummaryDuplicate(summary, observation.observation),
+    )
+    .slice(0, limit);
+}
+
 export function slugFromLensId(lensId: string): string {
   return `lens-${lensId}`;
 }
