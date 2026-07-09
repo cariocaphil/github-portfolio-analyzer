@@ -13,16 +13,16 @@ export function buildLensUserPrompt(params: {
   lensTitle: string;
   guidingQuestion: string;
   promptInstructions: string;
-  portfolioSummary: string;
+  lensPortfolioSummary?: string;
   lensContext: string;
 }): string {
   return [
     `Analyze the portfolio for the "${params.lensTitle}" lens.`,
     `Guiding question: ${params.guidingQuestion}`,
     `Lens instructions: ${params.promptInstructions}`,
-    "",
-    "Portfolio summary:",
-    params.portfolioSummary,
+    ...(params.lensPortfolioSummary
+      ? ["", "Lens-relevant portfolio signals:", params.lensPortfolioSummary]
+      : []),
     "",
     "Lens-specific evidence context:",
     params.lensContext,
@@ -33,19 +33,15 @@ export function buildLensUserPrompt(params: {
 }
 
 export function buildExecutiveSummaryUserPrompt(params: {
-  portfolioSummary: string;
   lensAnalyses: string;
 }): string {
   return [
-    "Synthesize a portfolio-level executive summary from completed lens analyses.",
-    "",
-    "Portfolio summary:",
-    params.portfolioSummary,
+    "Synthesize portfolio-level growth opportunities and final recommendations from completed lens analyses.",
     "",
     "Completed lens analyses:",
     params.lensAnalyses,
     "",
-    "Return JSON with executiveSummary, careerLevel, developerProfile, overallStrengths, growthOpportunities, and finalRecommendations.",
-    "Career level should be evidence-based (for example: Emerging, Mid-level, Senior).",
+    "Return JSON with growthOpportunities and finalRecommendations.",
+    "Both arrays must be grounded in the provided evidence.",
   ].join("\n");
 }

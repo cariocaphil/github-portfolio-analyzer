@@ -8,7 +8,7 @@ import {
   extractAzureFailureDiagnostics,
   isResponsesApiUnsupported,
 } from "./azureErrorDiagnostics";
-import { logAzureFailure } from "./logger";
+import { logAnalysisEvent, logAzureFailure } from "./logger";
 
 export interface StructuredCompletionParams {
   schemaName: string;
@@ -56,12 +56,7 @@ export async function runStructuredCompletionWithFallback<T>(
   client: OpenAI,
   context: RequestContext,
 ): Promise<StructuredCompletionResult<T>> {
-  const initialStrategy: RequestStrategy = {
-    api: "responses",
-    structuredOutput: "json_schema",
-    temperature: 0.2,
-    topP: 0.95,
-  };
+  const initialStrategy = buildInitialStrategy(context.config);
 
   let strategy = initialStrategy;
   let lastError: unknown;
@@ -110,6 +105,15 @@ export async function runStructuredCompletionWithFallback<T>(
     "AzureOpenAIAnalysisProvider",
     lastError,
   );
+}
+
+function buildInitialStrategy(config: AzureOpenAIConfig): RequestStrategy {
+  return {
+    api: "responses",
+    structuredOutput: "json_schema",
+    temperature: config.modelCapabilities.supportsTemperature ? 0.2 : undefined,
+    topP: config.modelCapabilities.supportsTopP ? 0.95 : undefined,
+  };
 }
 
 export function getNextFallbackStrategy(
@@ -182,20 +186,33 @@ async function executeStrategy<T>(
   context: RequestContext,
   strategy: RequestStrategy,
 ): Promise<StructuredCompletionResult<T>> {
+  const userContent = buildUserContent(context.params, strategy.structuredOutput);
+  const promptChars = AZURE_SYSTEM_PROMPT.length + userContent.length;
+  logAnalysisEvent({
+    event: "azure_request_prompt_size",
+    model: context.config.deployment,
+    apiVersion: context.config.apiVersion,
+    requestType: context.params.requestType ?? "structured_completion",
+    lensId: context.params.lensId,
+    schemaName: context.params.schemaName,
+    strategy: describeStrategy(strategy),
+    promptChars,
+    estimatedPromptTokens: estimatePromptTokens(promptChars),
+  });
+
   if (strategy.api === "responses") {
-    return executeResponsesRequest<T>(client, context, strategy);
+    return executeResponsesRequest<T>(client, context, strategy, userContent);
   }
 
-  return executeChatRequest<T>(client, context, strategy);
+  return executeChatRequest<T>(client, context, strategy, userContent);
 }
 
 async function executeResponsesRequest<T>(
   client: OpenAI,
   context: RequestContext,
   strategy: RequestStrategy,
+  userContent: string,
 ): Promise<StructuredCompletionResult<T>> {
-  const userContent = buildUserContent(context.params, strategy.structuredOutput);
-
   const body: Record<string, unknown> = {
     model: context.config.deployment,
     instructions: AZURE_SYSTEM_PROMPT,
@@ -243,8 +260,8 @@ async function executeChatRequest<T>(
   client: OpenAI,
   context: RequestContext,
   strategy: RequestStrategy,
+  userContent: string,
 ): Promise<StructuredCompletionResult<T>> {
-  const userContent = buildUserContent(context.params, strategy.structuredOutput);
   const body: Record<string, unknown> = {
     model: context.config.deployment,
     messages: [
@@ -296,11 +313,20 @@ function buildUserContent(
   params: StructuredCompletionParams,
   structuredOutput: RequestStrategy["structuredOutput"],
 ): string {
+  if (structuredOutput === "json_schema") {
+    return params.userPrompt;
+  }
+
   if (structuredOutput === "plain") {
     return `${params.userPrompt}\n\nReturn valid JSON only. Match this schema exactly:\n${JSON.stringify(params.schema)}`;
   }
 
   return `${params.userPrompt}\n\nRespond with JSON matching this schema exactly:\n${JSON.stringify(params.schema)}`;
+}
+
+function estimatePromptTokens(charCount: number): number {
+  // Simple approximation for diagnostics and trend tracking.
+  return Math.ceil(charCount / 4);
 }
 
 function mapUsage(usage?: {

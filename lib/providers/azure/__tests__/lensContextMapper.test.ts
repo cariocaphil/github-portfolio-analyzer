@@ -4,7 +4,6 @@ import {
   getPortfolioLenses,
 } from "@/config/analysisLenses";
 import { buildLensContextMarkdown } from "../lensContextMapper";
-import { buildPortfolioContextCache } from "../portfolioContextBuilder";
 import { createSampleEvidence } from "./fixtures";
 
 describe("lensContextMapper", () => {
@@ -18,11 +17,10 @@ describe("lensContextMapper", () => {
     const markdown = buildLensContextMarkdown({
       lens: lens!,
       evidence,
-      repositoryContexts: buildPortfolioContextCache(evidence),
     });
 
     expect(markdown).toContain("dev-user/app");
-    expect(markdown.toLowerCase()).toContain("activity");
+    expect(markdown.toLowerCase()).toContain("days since last push");
     expect(markdown).not.toContain("dependency: react");
   });
 
@@ -34,9 +32,10 @@ describe("lensContextMapper", () => {
     const markdown = buildLensContextMarkdown({
       lens: lens!,
       evidence,
-      repositoryContexts: buildPortfolioContextCache(evidence),
     });
 
     expect(markdown).toContain("Uses React and TypeScript");
+    expect(markdown).not.toContain("Important README excerpt:");
+    expect(markdown).not.toContain("Stars/Forks:");
   });
 });

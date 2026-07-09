@@ -23,10 +23,6 @@ const sampleLensResult: LensAnalysisResult = {
 };
 
 const executiveSummary: ExecutiveSummaryResult = {
-  executiveSummary: "Solid frontend evidence with room to improve delivery practices.",
-  careerLevel: "Mid-level",
-  developerProfile: "Frontend-focused engineer",
-  overallStrengths: ["React usage"],
   growthOpportunities: ["Expand CI coverage"],
   finalRecommendations: ["Introduce GitHub Actions"],
 };

@@ -17,6 +17,19 @@ describe("portfolioContextBuilder", () => {
     expect(context.markdown).not.toContain('"repositoryProfiles"');
   });
 
+  it("applies compact limits to README excerpt and evidence blocks", () => {
+    const evidence = createSampleEvidence();
+    const context = buildRepositoryContext(evidence.repositoryProfiles[0]);
+
+    const evidenceBulletCount = context.markdown
+      .split("\nEngineering Evidence:\n")[1]
+      ?.split("\n\n")[0]
+      ?.split("\n")
+      .filter((line) => line.startsWith("- ")).length;
+
+    expect(evidenceBulletCount).toBeLessThanOrEqual(4);
+  });
+
   it("caches repository contexts for reuse", () => {
     const evidence = createSampleEvidence();
     const cache = buildPortfolioContextCache(evidence);

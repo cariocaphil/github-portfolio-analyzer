@@ -13,8 +13,7 @@ import { aggregateConfidence } from "./azure/confidence";
 import { buildLensContextMarkdown } from "./azure/lensContextMapper";
 import { logAnalysisEvent } from "./azure/logger";
 import {
-  buildPortfolioContextCache,
-  buildPortfolioSummaryMarkdown,
+  buildLensPortfolioSummaryMarkdown,
 } from "./azure/portfolioContextBuilder";
 import {
   buildExecutiveSummaryUserPrompt,
@@ -32,6 +31,7 @@ import {
 import type {
   ExecutiveSummaryResult,
   LensAnalysisResult,
+  RequestTokenUsage,
   TokenUsageTotals,
 } from "./azure/types";
 
@@ -51,13 +51,12 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     const client = this.clientFactory?.() ?? createAzureCompletionClient(config);
     const startedAt = Date.now();
     const lenses = getPortfolioLenses();
-    const repositoryContexts = buildPortfolioContextCache(evidence);
-    const portfolioSummary = buildPortfolioSummaryMarkdown(evidence);
     const tokenUsage: TokenUsageTotals = {
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
     };
+    const requestTokenUsage: RequestTokenUsage[] = [];
 
     logAnalysisEvent({
       event: "portfolio_analysis_started",
@@ -71,18 +70,17 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
       client,
       evidence,
       lenses,
-      portfolioSummary,
-      repositoryContexts,
       tokenUsage,
+      requestTokenUsage,
     });
 
     const executiveSummary = await withRetry(
       () =>
         this.analyzeExecutiveSummary({
           client,
-          portfolioSummary,
           lensResults,
           tokenUsage,
+          requestTokenUsage,
         }),
       {
         maxRetries: 3,
@@ -132,6 +130,8 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
         promptTokens: tokenUsage.promptTokens,
         completionTokens: tokenUsage.completionTokens,
         totalTokens: tokenUsage.totalTokens,
+        aggregatedTechnologies: evidence.aggregatedTechnologies,
+        requestTokenUsage,
         averageConfidence: confidence.averageConfidence,
         highestConfidence: confidence.highestConfidence,
         lowestConfidence: confidence.lowestConfidence,
@@ -143,9 +143,8 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     client: AzureCompletionClient;
     evidence: UnifiedPortfolioEvidenceModel;
     lenses: AnalysisLens[];
-    portfolioSummary: string;
-    repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<Array<{ lens: AnalysisLens; result: LensAnalysisResult }>> {
     const completed = new Map<string, LensAnalysisResult>();
     let remaining = [...params.lenses];
@@ -162,9 +161,8 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
                   client: params.client,
                   lens,
                   evidence: params.evidence,
-                  portfolioSummary: params.portfolioSummary,
-                  repositoryContexts: params.repositoryContexts,
                   tokenUsage: params.tokenUsage,
+                  requestTokenUsage: params.requestTokenUsage,
                 }),
               {
                 maxRetries: 3,
@@ -219,14 +217,12 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     client: AzureCompletionClient;
     lens: AnalysisLens;
     evidence: UnifiedPortfolioEvidenceModel;
-    portfolioSummary: string;
-    repositoryContexts: ReturnType<typeof buildPortfolioContextCache>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<LensAnalysisResult> {
     const lensContext = buildLensContextMarkdown({
       lens: params.lens,
       evidence: params.evidence,
-      repositoryContexts: params.repositoryContexts,
     });
 
     const completion = await params.client.createStructuredCompletion<LensAnalysisResult>(
@@ -239,7 +235,10 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
           lensTitle: params.lens.title,
           guidingQuestion: params.lens.guidingQuestion,
           promptInstructions: params.lens.promptInstructions,
-          portfolioSummary: params.portfolioSummary,
+          lensPortfolioSummary: buildLensPortfolioSummaryMarkdown(
+            params.lens.id,
+            params.evidence,
+          ),
           lensContext,
         }),
       },
@@ -248,15 +247,23 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     params.tokenUsage.promptTokens += completion.usage.promptTokens;
     params.tokenUsage.completionTokens += completion.usage.completionTokens;
     params.tokenUsage.totalTokens += completion.usage.totalTokens;
+    params.requestTokenUsage.push({
+      requestType: "lens_analysis",
+      lensId: params.lens.id,
+      schemaName: `lens_analysis_${params.lens.id}`,
+      promptTokens: completion.usage.promptTokens,
+      completionTokens: completion.usage.completionTokens,
+      totalTokens: completion.usage.totalTokens,
+    });
 
     return completion.parsed;
   }
 
   private async analyzeExecutiveSummary(params: {
     client: AzureCompletionClient;
-    portfolioSummary: string;
     lensResults: Array<{ lens: AnalysisLens; result: LensAnalysisResult }>;
     tokenUsage: TokenUsageTotals;
+    requestTokenUsage: RequestTokenUsage[];
   }): Promise<ExecutiveSummaryResult> {
     const completion =
       await params.client.createStructuredCompletion<ExecutiveSummaryResult>({
@@ -264,7 +271,6 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
         schema: EXECUTIVE_SUMMARY_JSON_SCHEMA,
         requestType: "executive_summary",
         userPrompt: buildExecutiveSummaryUserPrompt({
-          portfolioSummary: params.portfolioSummary,
           lensAnalyses: formatLensAnalysesForExecutiveSummary(params.lensResults),
         }),
       });
@@ -272,6 +278,13 @@ export class AzureOpenAIAnalysisProvider implements PortfolioAnalysisProvider {
     params.tokenUsage.promptTokens += completion.usage.promptTokens;
     params.tokenUsage.completionTokens += completion.usage.completionTokens;
     params.tokenUsage.totalTokens += completion.usage.totalTokens;
+    params.requestTokenUsage.push({
+      requestType: "executive_summary",
+      schemaName: "executive_summary",
+      promptTokens: completion.usage.promptTokens,
+      completionTokens: completion.usage.completionTokens,
+      totalTokens: completion.usage.totalTokens,
+    });
 
     return completion.parsed;
   }

@@ -17,10 +17,6 @@ export interface LensAnalysisResult {
 }
 
 export interface ExecutiveSummaryResult {
-  executiveSummary: string;
-  careerLevel: string;
-  developerProfile: string;
-  overallStrengths: string[];
   growthOpportunities: string[];
   finalRecommendations: string[];
 }
@@ -31,10 +27,22 @@ export interface TokenUsageTotals {
   totalTokens: number;
 }
 
+export interface RequestTokenUsage extends TokenUsageTotals {
+  requestType: "lens_analysis" | "executive_summary";
+  lensId?: string;
+  schemaName: string;
+}
+
+export interface AzureModelCapabilities {
+  supportsTemperature: boolean;
+  supportsTopP: boolean;
+}
+
 export interface AzureOpenAIConfig {
   endpoint: string;
   apiKey: string;
   deployment: string;
   apiVersion: string;
   usesV1Endpoint: boolean;
+  modelCapabilities: AzureModelCapabilities;
 }

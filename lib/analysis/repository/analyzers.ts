@@ -24,6 +24,7 @@ export interface LensAnalysisResult {
 }
 
 type RepositoryLensAnalyzer = (raw: RawRepositoryData) => LensAnalysisResult;
+const MAX_PACKAGE_DEPENDENCY_FACTS = 8;
 
 function emptyResult(): LensAnalysisResult {
   return { observations: [], evidenceSources: [], detectedTechnologies: [] };
@@ -146,7 +147,8 @@ const analyzeTechnicalStack: RepositoryLensAnalyzer = (raw) => {
     if (pkg?.name) facts.push(`package name: ${pkg.name}`);
     if (pkg?.scripts) facts.push(`scripts: ${Object.keys(pkg.scripts).join(", ")}`);
     if (deps) {
-      for (const dep of Object.keys(deps).slice(0, 15)) {
+      const dependencyNames = Object.keys(deps);
+      for (const dep of dependencyNames.slice(0, MAX_PACKAGE_DEPENDENCY_FACTS)) {
         facts.push(`dependency: ${dep}`);
         result.detectedTechnologies.push({
           name: dep,
@@ -154,6 +156,7 @@ const analyzeTechnicalStack: RepositoryLensAnalyzer = (raw) => {
           source: "package.json",
         });
       }
+      facts.push(`total dependencies declared: ${dependencyNames.length}`);
     }
 
     const source = createEvidenceSource(

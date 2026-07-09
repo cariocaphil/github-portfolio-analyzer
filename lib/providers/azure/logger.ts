@@ -18,6 +18,9 @@ interface AnalysisLogEvent {
   requestType?: string;
   lensId?: string;
   strategy?: string;
+  schemaName?: string;
+  promptChars?: number;
+  estimatedPromptTokens?: number;
 }
 
 export function logAnalysisEvent(data: AnalysisLogEvent): void {

@@ -1,11 +1,16 @@
 import type { RepositoryEvidenceProfile } from "@/lib/models/evidence";
 import type { UnifiedPortfolioEvidenceModel } from "@/lib/models/portfolio";
 import { daysSince } from "@/lib/analysis/utils";
+import { MAX_LENS_PORTFOLIO_TECHNOLOGIES } from "./azureContextLimits";
 
 export interface RepositoryContext {
   repository: string;
   markdown: string;
 }
+
+const README_EXCERPT_CHAR_LIMIT = 250;
+const ENGINEERING_EVIDENCE_FACT_LIMIT = 4;
+const INTERESTING_OBSERVATION_LIMIT = 3;
 
 function observationText(
   profile: RepositoryEvidenceProfile,
@@ -45,7 +50,7 @@ function readmeExcerpt(profile: RepositoryEvidenceProfile): string {
   if (!excerpt) {
     return "README present but no excerpt extracted.";
   }
-  return excerpt.slice(0, 500);
+  return excerpt.slice(0, README_EXCERPT_CHAR_LIMIT);
 }
 
 export function buildRepositoryContext(
@@ -73,7 +78,7 @@ export function buildRepositoryContext(
   const structure = observationText(profile, "project-structure");
   const activity = observationText(profile, "activity-evolution");
   const interestingObservations = profile.observations
-    .slice(0, 6)
+    .slice(0, INTERESTING_OBSERVATION_LIMIT)
     .map((observation) => `- ${observation.observation}`);
 
   const markdown = [
@@ -96,7 +101,7 @@ export function buildRepositoryContext(
     readmeExcerpt(profile),
     "",
     "Engineering Evidence:",
-    ...evidenceFacts(profile, () => true, 8).map((fact) => `- ${fact}`),
+    ...evidenceFacts(profile, () => true, ENGINEERING_EVIDENCE_FACT_LIMIT).map((fact) => `- ${fact}`),
     "",
     "Interesting Observations:",
     ...(interestingObservations.length > 0
@@ -138,4 +143,65 @@ export function buildPortfolioSummaryMarkdown(
     `Topics: ${evidence.summary.topics.join(", ") || "None"}`,
     `Technologies: ${evidence.aggregatedTechnologies.slice(0, 25).join(", ") || "None"}`,
   ].join("\n");
+}
+
+export function buildLensPortfolioSummaryMarkdown(
+  lensId: string,
+  evidence: UnifiedPortfolioEvidenceModel,
+): string {
+  const { summary } = evidence;
+  const common = [`Repositories analyzed: ${summary.totalRepositories}`];
+
+  if (lensId === "technical-breadth") {
+    return [
+      ...common,
+      `Primary languages: ${summary.primaryLanguages.join(", ") || "None"}`,
+      `Technologies: ${evidence.aggregatedTechnologies.slice(0, MAX_LENS_PORTFOLIO_TECHNOLOGIES).join(", ") || "None"}`,
+    ].join("\n");
+  }
+
+  if (lensId === "project-complexity") {
+    return [
+      ...common,
+      `Repositories with tests: ${summary.repositoriesWithTests}`,
+      `Repositories with CI: ${summary.repositoriesWithCi}`,
+      `Repositories with Docker: ${summary.repositoriesWithDocker}`,
+      `Repositories with deployment signals: ${summary.repositoriesWithDeploymentConfig}`,
+    ].join("\n");
+  }
+
+  if (lensId === "portfolio-documentation") {
+    return [
+      ...common,
+      `Repositories with README: ${summary.repositoriesWithReadme}`,
+    ].join("\n");
+  }
+
+  if (
+    lensId === "portfolio-testing-quality" ||
+    lensId === "engineering-practices"
+  ) {
+    return [
+      ...common,
+      `Repositories with tests: ${summary.repositoriesWithTests}`,
+      `Repositories with CI: ${summary.repositoriesWithCi}`,
+    ].join("\n");
+  }
+
+  if (lensId === "deployment-delivery") {
+    return [
+      ...common,
+      `Repositories with Docker: ${summary.repositoriesWithDocker}`,
+      `Repositories with deployment signals: ${summary.repositoriesWithDeploymentConfig}`,
+    ].join("\n");
+  }
+
+  if (lensId === "project-evolution") {
+    return [
+      ...common,
+      `Primary languages: ${summary.primaryLanguages.join(", ") || "None"}`,
+    ].join("\n");
+  }
+
+  return common.join("\n");
 }

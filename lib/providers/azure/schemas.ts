@@ -15,7 +15,6 @@ export const LENS_ANALYSIS_JSON_SCHEMA = {
           path: { type: "string" },
           description: { type: "string" },
           facts: { type: "array", items: { type: "string" } },
-          githubUrl: { type: "string" },
         },
         required: ["repository", "path", "description", "facts"],
         additionalProperties: false,
@@ -38,20 +37,9 @@ export const LENS_ANALYSIS_JSON_SCHEMA = {
 export const EXECUTIVE_SUMMARY_JSON_SCHEMA = {
   type: "object",
   properties: {
-    executiveSummary: { type: "string" },
-    careerLevel: { type: "string" },
-    developerProfile: { type: "string" },
-    overallStrengths: { type: "array", items: { type: "string" } },
     growthOpportunities: { type: "array", items: { type: "string" } },
     finalRecommendations: { type: "array", items: { type: "string" } },
   },
-  required: [
-    "executiveSummary",
-    "careerLevel",
-    "developerProfile",
-    "overallStrengths",
-    "growthOpportunities",
-    "finalRecommendations",
-  ],
+  required: ["growthOpportunities", "finalRecommendations"],
   additionalProperties: false,
 } as const;

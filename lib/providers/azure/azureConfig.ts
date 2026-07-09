@@ -3,6 +3,7 @@ import {
   isAzureOpenAiV1,
   validateAzureConfiguration,
 } from "./azureClientFactory";
+import { resolveAzureModelCapabilities } from "./modelCapabilities";
 import type { AzureOpenAIConfig } from "./types";
 
 const PROVIDER_NAME = "AzureOpenAIAnalysisProvider";
@@ -32,6 +33,7 @@ export function loadAzureConfig(): AzureOpenAIConfig {
     deployment: deployment!,
     apiVersion: apiVersion!,
     usesV1Endpoint: isAzureOpenAiV1(apiVersion!),
+    modelCapabilities: resolveAzureModelCapabilities(deployment!),
   };
 
   validateAzureConfiguration(config);

@@ -1,15 +1,13 @@
 import { ExecutiveSummary } from "@/components/ExecutiveSummary";
 import { ReportNavigation } from "@/components/ReportNavigation";
 import { ReportSectionView } from "@/components/ReportSection";
-import { ReportVisuals } from "@/components/ReportVisuals";
 import { TechnologyBreakdown } from "@/components/TechnologyBreakdown";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
+import { consolidateImprovementSuggestions } from "@/lib/presentation/improvementSuggestions";
 import {
   buildExecutiveSummary,
   categorizeTechnologies,
-  distributionFromSections,
   slugFromLensId,
-  toSectionSummary,
 } from "@/lib/presentation/reportPresentation";
 
 interface ReportViewProps {
@@ -17,57 +15,19 @@ interface ReportViewProps {
 }
 
 export function ReportView({ report }: ReportViewProps) {
-  const { developerSnapshot, sections, improvementSuggestions } = report;
+  const { developerSnapshot, sections } = report;
+  const improvementSuggestions = consolidateImprovementSuggestions(report);
   const executiveSummary = buildExecutiveSummary(report);
   const technologyGroups = categorizeTechnologies(report);
-  const sectionSummaries = sections.map(toSectionSummary);
 
   const navigationItems = [
     { id: "executive-summary", label: "Executive Summary" },
     { id: "technology-breakdown", label: "Technology Breakdown" },
-    { id: "visual-summary", label: "Visual Summary" },
     ...sections.map((section) => ({
       id: slugFromLensId(section.lensId),
       label: section.title,
     })),
     { id: "improvement-suggestions", label: "Improvement Suggestions" },
-  ];
-
-  const technologyDistribution = technologyGroups.map((group) => ({
-    label: group.category,
-    value: group.technologies.length,
-  }));
-  const lensDistribution = distributionFromSections(sections);
-
-  const repositoryEvidenceCounts = new Map<string, number>();
-  for (const section of sections) {
-    for (const observation of section.observations) {
-      for (const evidence of observation.supportingEvidence) {
-        repositoryEvidenceCounts.set(
-          evidence.repository,
-          (repositoryEvidenceCounts.get(evidence.repository) ?? 0) + 1,
-        );
-      }
-    }
-  }
-
-  const repositoryTypeDistribution = [
-    {
-      label: "High evidence (6+)",
-      value: [...repositoryEvidenceCounts.values()].filter((count) => count >= 6)
-        .length,
-    },
-    {
-      label: "Medium evidence (3-5)",
-      value: [...repositoryEvidenceCounts.values()].filter(
-        (count) => count >= 3 && count <= 5,
-      ).length,
-    },
-    {
-      label: "Low evidence (1-2)",
-      value: [...repositoryEvidenceCounts.values()].filter((count) => count <= 2)
-        .length,
-    },
   ];
 
   return (
@@ -77,7 +37,7 @@ export function ReportView({ report }: ReportViewProps) {
       <div className="space-y-8">
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">
-            Engineering Evidence Report
+            Engineering Portfolio Assessment
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
@@ -125,33 +85,6 @@ export function ReportView({ report }: ReportViewProps) {
         />
 
         <TechnologyBreakdown groups={technologyGroups} />
-
-        <ReportVisuals
-          lensDistribution={lensDistribution}
-          technologyDistribution={technologyDistribution}
-          repositoryTypeDistribution={repositoryTypeDistribution}
-        />
-
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Lens Highlights Snapshot
-          </h3>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {sectionSummaries.map((summary) => (
-              <a
-                key={summary.section.lensId}
-                href={`#${slugFromLensId(summary.section.lensId)}`}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  {summary.section.title}
-                </p>
-                <p className="mt-1 text-xs text-slate-600">Score: {summary.score}</p>
-                <p className="mt-1 text-sm text-slate-700">{summary.summary}</p>
-              </a>
-            ))}
-          </div>
-        </section>
 
         {sections.map((section) => (
           <ReportSectionView key={section.lensId} section={section} />

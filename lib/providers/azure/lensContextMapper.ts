@@ -1,7 +1,12 @@
 import type { AnalysisLens } from "@/lib/models/report";
 import type { RepositoryEvidenceProfile } from "@/lib/models/evidence";
 import type { UnifiedPortfolioEvidenceModel } from "@/lib/models/portfolio";
-import type { RepositoryContext } from "./portfolioContextBuilder";
+import {
+  MAX_FACTS_PER_REPO_CONTEXT,
+  MAX_OBSERVATIONS_PER_REPO_CONTEXT,
+  MAX_REPOS_PER_LENS_CONTEXT,
+  MAX_TECHNOLOGIES_PER_REPO_CONTEXT,
+} from "./azureContextLimits";
 
 const LENS_REPOSITORY_OBSERVATION_IDS: Record<string, string[]> = {
   "technical-breadth": ["technical-stack", "repository-purpose"],
@@ -77,50 +82,158 @@ function profileMatchesLens(
   );
 }
 
-function summarizeProfileForLens(
+function isNoiseFact(fact: string): boolean {
+  const lower = fact.toLowerCase();
+  return (
+    lower.startsWith("word count:") ||
+    lower.startsWith("section headings") ||
+    lower.startsWith("scripts:") ||
+    lower.startsWith("package name:") ||
+    lower.startsWith("total dependencies") ||
+    lower.includes("http://") ||
+    lower.includes("https://")
+  );
+}
+
+function compactFact(fact: string): string {
+  if (fact.toLowerCase().startsWith("dependency:")) {
+    return fact.replace(/^dependency:\s*/i, "").trim();
+  }
+  return fact.trim();
+}
+
+function relevantTechnologies(
+  profile: RepositoryEvidenceProfile,
+  lensId: string,
+): string[] {
+  const names = new Set<string>();
+  if (profile.metadata.language) {
+    names.add(profile.metadata.language);
+  }
+
+  const matcher = LENS_EVIDENCE_MATCHERS[lensId];
+  for (const tech of profile.detectedTechnologies) {
+    if (matcher && lensId !== "technical-breadth") {
+      const hasMatchingSource = profile.evidenceSources.some((source) =>
+        matcher(source.path.toLowerCase(), source.description.toLowerCase()),
+      );
+      if (!hasMatchingSource && tech.category === "tool") {
+        continue;
+      }
+    }
+    names.add(tech.name);
+    if (names.size >= MAX_TECHNOLOGIES_PER_REPO_CONTEXT) {
+      break;
+    }
+  }
+
+  return [...names].slice(0, MAX_TECHNOLOGIES_PER_REPO_CONTEXT);
+}
+
+function lensObservations(
   profile: RepositoryEvidenceProfile,
   lensId: string,
 ): string[] {
   const observationLensIds = LENS_REPOSITORY_OBSERVATION_IDS[lensId] ?? [];
-  const observations = profile.observations
+  return profile.observations
     .filter((observation) => observationLensIds.includes(observation.lensId))
-    .map((observation) => observation.observation);
+    .map((observation) => observation.observation)
+    .slice(0, MAX_OBSERVATIONS_PER_REPO_CONTEXT);
+}
 
+function lensEvidenceDetails(
+  profile: RepositoryEvidenceProfile,
+  lensId: string,
+): { facts: string[]; sources: string[] } {
   const matcher = LENS_EVIDENCE_MATCHERS[lensId];
-  const evidenceFacts = matcher
-    ? profile.evidenceSources
-        .filter((source) =>
-          matcher(source.path.toLowerCase(), source.description.toLowerCase()),
-        )
-        .flatMap((source) => source.facts.slice(0, 2))
-        .slice(0, 6)
-    : [];
+  const facts: string[] = [];
+  const sources: string[] = [];
 
-  return [...observations, ...evidenceFacts];
+  if (!matcher) {
+    return { facts, sources };
+  }
+
+  for (const source of profile.evidenceSources) {
+    if (!matcher(source.path.toLowerCase(), source.description.toLowerCase())) {
+      continue;
+    }
+
+    if (source.path && !sources.includes(source.path)) {
+      sources.push(source.path);
+    }
+
+    for (const fact of source.facts) {
+      if (isNoiseFact(fact)) {
+        continue;
+      }
+      const normalized = compactFact(fact);
+      if (!normalized || facts.includes(normalized)) {
+        continue;
+      }
+      facts.push(normalized);
+      if (facts.length >= MAX_FACTS_PER_REPO_CONTEXT) {
+        break;
+      }
+    }
+
+    if (facts.length >= MAX_FACTS_PER_REPO_CONTEXT) {
+      break;
+    }
+  }
+
+  return {
+    facts,
+    sources: sources.slice(0, MAX_FACTS_PER_REPO_CONTEXT),
+  };
+}
+
+function profileRelevanceScore(
+  profile: RepositoryEvidenceProfile,
+  lensId: string,
+): number {
+  const observations = lensObservations(profile, lensId).length;
+  const { facts } = lensEvidenceDetails(profile, lensId);
+  return profile.metadata.stars * 10 + observations * 5 + facts.length * 3;
+}
+
+function buildCompactRepositoryBlock(
+  profile: RepositoryEvidenceProfile,
+  lensId: string,
+): string {
+  const observations = lensObservations(profile, lensId);
+  const technologies = relevantTechnologies(profile, lensId);
+  const { facts, sources } = lensEvidenceDetails(profile, lensId);
+
+  return [
+    `## ${profile.metadata.fullName}`,
+    `Primary language: ${profile.metadata.language ?? "Unknown"}`,
+    `Technologies: ${technologies.join(", ") || "None detected"}`,
+    ...(observations.length > 0
+      ? ["Observations:", ...observations.map((item) => `- ${item}`)]
+      : []),
+    ...(facts.length > 0 ? ["Evidence facts:", ...facts.map((item) => `- ${item}`)] : []),
+    ...(sources.length > 0
+      ? [`Sources: ${sources.join(", ")}`]
+      : []),
+  ].join("\n");
 }
 
 export function buildLensContextMarkdown(params: {
   lens: AnalysisLens;
   evidence: UnifiedPortfolioEvidenceModel;
-  repositoryContexts: Map<string, RepositoryContext>;
 }): string {
-  const relevantProfiles = params.evidence.repositoryProfiles.filter((profile) =>
-    profileMatchesLens(profile, params.lens.id),
-  );
+  const relevantProfiles = params.evidence.repositoryProfiles
+    .filter((profile) => profileMatchesLens(profile, params.lens.id))
+    .sort(
+      (left, right) =>
+        profileRelevanceScore(right, params.lens.id) -
+        profileRelevanceScore(left, params.lens.id),
+    )
+    .slice(0, MAX_REPOS_PER_LENS_CONTEXT);
 
-  const sections = relevantProfiles.map((profile) => {
-    const cached = params.repositoryContexts.get(profile.metadata.fullName);
-    const highlights = summarizeProfileForLens(profile, params.lens.id);
-    return [
-      `## ${profile.metadata.fullName}`,
-      ...(cached ? [cached.markdown.split("Important README excerpt:")[0]?.trim() ?? ""] : []),
-      "",
-      "Lens-relevant highlights:",
-      ...(highlights.length > 0
-        ? highlights.map((item) => `- ${item}`)
-        : ["- Limited lens-specific evidence"]),
-    ].join("\n");
-  });
+  const sections = relevantProfiles.map((profile) =>
+    buildCompactRepositoryBlock(profile, params.lens.id),
+  );
 
   if (sections.length === 0) {
     return "No repository evidence matched this lens.";

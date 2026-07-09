@@ -31,10 +31,6 @@ const lensResult: LensAnalysisResult = {
 };
 
 const executiveSummary: ExecutiveSummaryResult = {
-  executiveSummary: "Solid portfolio with frontend focus.",
-  careerLevel: "Mid-level",
-  developerProfile: "Frontend engineer",
-  overallStrengths: ["React"],
   growthOpportunities: ["CI"],
   finalRecommendations: ["Introduce GitHub Actions"],
 };
@@ -84,6 +80,22 @@ describe("AzureOpenAIAnalysisProvider", () => {
     expect(report.metadata.model).toBe("gpt-4o-mini");
     expect(report.metadata.totalTokens).toBeGreaterThan(0);
     expect(report.metadata.averageConfidence).toBe(91);
+    expect(report.metadata.requestTokenUsage).toHaveLength(ENABLED_LENS_COUNT + 1);
+    expect(
+      report.metadata.requestTokenUsage?.some(
+        (entry) =>
+          entry.requestType === "lens_analysis" &&
+          entry.schemaName === "lens_analysis_technical-breadth" &&
+          entry.lensId === "technical-breadth",
+      ),
+    ).toBe(true);
+    expect(
+      report.metadata.requestTokenUsage?.some(
+        (entry) =>
+          entry.requestType === "executive_summary" &&
+          entry.schemaName === "executive_summary",
+      ),
+    ).toBe(true);
     expect(createSpy.mock.calls.some((call) => call[0].schemaName === "executive_summary")).toBe(
       true,
     );

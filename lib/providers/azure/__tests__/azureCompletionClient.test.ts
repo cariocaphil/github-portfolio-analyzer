@@ -50,13 +50,10 @@ describe("azureCompletionClient fallbacks", () => {
     expect(next?.structuredOutput).toBe("json_object");
   });
 
-  it("retries without temperature and then succeeds via Responses API", async () => {
+  it("starts without sampling params for gpt-5-mini and succeeds on first response request", async () => {
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const responsesCreate = vi
       .fn()
-      .mockRejectedValueOnce({
-        status: 400,
-        message: "Unsupported parameter: 'temperature' is not supported with this model.",
-      })
       .mockResolvedValueOnce({
         output_text: JSON.stringify(sampleResult),
         usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
@@ -76,6 +73,10 @@ describe("azureCompletionClient fallbacks", () => {
           deployment: "gpt-5-mini",
           apiVersion: "2024-10-21",
           usesV1Endpoint: false,
+          modelCapabilities: {
+            supportsTemperature: false,
+            supportsTopP: false,
+          },
         },
         params: {
           schemaName: "lens_analysis_test",
@@ -88,18 +89,44 @@ describe("azureCompletionClient fallbacks", () => {
     );
 
     expect(result.parsed.summary).toBe("Summary");
-    expect(responsesCreate).toHaveBeenCalledTimes(2);
-    expect(responsesCreate.mock.calls[1][0]).not.toHaveProperty("temperature");
+    expect(responsesCreate).toHaveBeenCalledTimes(1);
+    expect(responsesCreate.mock.calls[0][0]).not.toHaveProperty("temperature");
+    expect(responsesCreate.mock.calls[0][0]).not.toHaveProperty("top_p");
+    expect(
+      String(responsesCreate.mock.calls[0][0].input).includes(
+        "Respond with JSON matching this schema exactly:",
+      ),
+    ).toBe(false);
+    expect(
+      String(responsesCreate.mock.calls[0][0].input).includes("Analyze this portfolio"),
+    ).toBe(true);
+    expect(
+      logSpy.mock.calls.some(([message]) => {
+        if (typeof message !== "string") return false;
+        try {
+          const parsed = JSON.parse(message) as { event?: string; promptChars?: number };
+          return parsed.event === "azure_request_prompt_size" && (parsed.promptChars ?? 0) > 0;
+        } catch {
+          return false;
+        }
+      }),
+    ).toBe(true);
   });
 
   it("falls back from structured outputs to plain JSON via chat completions", async () => {
     const responsesCreate = vi
       .fn()
       .mockRejectedValue(new Error("Responses API route not found"));
-    const chatCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(sampleResult) } }],
-      usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
-    });
+    const chatCreate = vi
+      .fn()
+      .mockRejectedValueOnce({
+        status: 400,
+        message: "Unsupported parameter: 'response_format' is not supported with this model.",
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify(sampleResult) } }],
+        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      });
 
     const client = {
       responses: { create: responsesCreate },
@@ -115,6 +142,10 @@ describe("azureCompletionClient fallbacks", () => {
           deployment: "gpt-5-mini",
           apiVersion: "2024-10-21",
           usesV1Endpoint: false,
+          modelCapabilities: {
+            supportsTemperature: false,
+            supportsTopP: false,
+          },
         },
         params: {
           schemaName: "lens_analysis_test",
@@ -127,7 +158,14 @@ describe("azureCompletionClient fallbacks", () => {
     );
 
     expect(result.parsed.score).toBe(84);
-    expect(chatCreate).toHaveBeenCalled();
+    expect(chatCreate).toHaveBeenCalledTimes(2);
+    const chatPayload = chatCreate.mock.calls[1][0];
+    const userMessage = chatPayload.messages?.find(
+      (message: { role?: string; content?: string }) => message.role === "user",
+    )?.content;
+    expect(String(userMessage)).toContain(
+      "Return valid JSON only. Match this schema exactly:",
+    );
   });
 
   it("parses JSON embedded in text", () => {

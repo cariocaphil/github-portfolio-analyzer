@@ -4,6 +4,7 @@ import type {
   ReportObservation,
   ReportSection,
 } from "@/lib/models/report";
+import { normalizeTechnologyName } from "@/lib/technology/normalization";
 
 export type ConfidenceLevel = ReportObservation["confidence"];
 
@@ -26,6 +27,21 @@ export interface RepositoryEvidenceGroup {
   keyAchievements: string[];
   items: GroupedEvidenceItem[];
 }
+
+export interface RepresentativeRepository {
+  repository: string;
+  displayName: string;
+  highlight: string;
+}
+
+const MAX_REPRESENTATIVE_REPOSITORIES = 5;
+const DEFAULT_REPRESENTATIVE_REPOSITORIES = 4;
+
+const GENERIC_FINDING_RATIONALES = [
+  "identified as a portfolio strength",
+  "identified as a concern or gap",
+  "lens score:",
+];
 
 export interface ExecutiveSummaryViewModel {
   overallPortfolioScore: number;
@@ -149,6 +165,116 @@ export function toSectionSummary(section: ReportSection): ScoredSection {
   };
 }
 
+function normalizeComparableText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shouldDropAsSummaryDuplicate(
+  summary: string,
+  candidate: string,
+): boolean {
+  const normalizedSummary = normalizeComparableText(summary);
+  const normalizedCandidate = normalizeComparableText(candidate);
+
+  if (!normalizedSummary || !normalizedCandidate) {
+    return false;
+  }
+
+  if (normalizedSummary === normalizedCandidate) {
+    return true;
+  }
+
+  const summaryWordCount = normalizedSummary.split(" ").length;
+  const candidateWordCount = normalizedCandidate.split(" ").length;
+  const bothLong = summaryWordCount >= 8 && candidateWordCount >= 8;
+
+  if (
+    bothLong &&
+    (normalizedSummary.includes(normalizedCandidate) ||
+      normalizedCandidate.includes(normalizedSummary))
+  ) {
+    return true;
+  }
+
+  if (!bothLong) {
+    return false;
+  }
+
+  const summaryTokens = new Set(normalizedSummary.split(" "));
+  const candidateTokens = new Set(normalizedCandidate.split(" "));
+  const overlapCount = [...candidateTokens].filter((token) =>
+    summaryTokens.has(token),
+  ).length;
+  const overlapRatio = overlapCount / Math.max(candidateTokens.size, 1);
+
+  return overlapRatio >= 0.85;
+}
+
+export function getDistinctKeyFindings(
+  section: ReportSection,
+  summary: string,
+  limit = 3,
+): ReportObservation[] {
+  return section.observations
+    .filter(
+      (observation) =>
+        !shouldDropAsSummaryDuplicate(summary, observation.observation),
+    )
+    .slice(0, limit);
+}
+
+export function shouldShowFindingRationale(rationale: string): boolean {
+  const normalized = rationale.toLowerCase();
+  return !GENERIC_FINDING_RATIONALES.some((phrase) => normalized.includes(phrase));
+}
+
+function repositoryDisplayName(repository: string): string {
+  const segments = repository.split("/");
+  return segments[segments.length - 1] || repository;
+}
+
+function shortenText(value: string, maxLength = 72): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength - 3).trim()}...`;
+}
+
+function buildRepositoryHighlight(group: RepositoryEvidenceGroup): string {
+  const technologies = group.primaryTechnologies.slice(0, 4);
+  const signal =
+    group.keyAchievements.find(
+      (achievement) =>
+        achievement.length > 0 &&
+        !achievement.toLowerCase().includes("lens score"),
+    ) ?? group.repositoryPurpose;
+
+  if (technologies.length > 0) {
+    return `${technologies.join(", ")}${signal ? ` — ${shortenText(signal, 56)}` : ""}`;
+  }
+
+  return shortenText(signal, 80);
+}
+
+export function getRepresentativeRepositories(
+  section: ReportSection,
+  limit = DEFAULT_REPRESENTATIVE_REPOSITORIES,
+): RepresentativeRepository[] {
+  const cappedLimit = Math.min(Math.max(limit, 3), MAX_REPRESENTATIVE_REPOSITORIES);
+  return groupEvidenceByRepository(section)
+    .slice(0, cappedLimit)
+    .map((group) => ({
+      repository: group.repository,
+      displayName: repositoryDisplayName(group.repository),
+      highlight: buildRepositoryHighlight(group),
+    }));
+}
+
 export function slugFromLensId(lensId: string): string {
   return `lens-${lensId}`;
 }
@@ -171,24 +297,42 @@ export function categorizeTechnologies(
   report: DeveloperPortfolioReport,
 ): TechnologyCategoryGroup[] {
   const allTokens = new Set<string>();
-  for (const section of report.sections) {
-    for (const observation of section.observations) {
-      for (const evidence of observation.supportingEvidence) {
-        for (const fact of evidence.facts) {
-          const tokens = fact
-            .split(/[,:]/)
-            .map(normalizeTechnology)
-            .filter((token) => token.length > 1 && token.length < 40);
-          for (const token of tokens) {
-            allTokens.add(token);
-          }
-        }
-      }
+
+  const metadataTechnologies = report.metadata.aggregatedTechnologies ?? [];
+  for (const technology of metadataTechnologies) {
+    const normalized = normalizeTechnologyName(technology);
+    if (normalized) {
+      allTokens.add(normalized);
     }
   }
 
   for (const language of report.developerSnapshot.primaryLanguages) {
-    allTokens.add(language);
+    const normalized = normalizeTechnologyName(language);
+    if (normalized) {
+      allTokens.add(normalized);
+    }
+  }
+
+  // Backward-compatible fallback for old reports without aggregated technologies.
+  if (allTokens.size === 0) {
+    for (const section of report.sections) {
+      for (const observation of section.observations) {
+        for (const evidence of observation.supportingEvidence) {
+          for (const fact of evidence.facts) {
+            const tokens = fact
+              .split(/[,:]/)
+              .map(normalizeTechnology)
+              .filter((token) => token.length > 1 && token.length < 40);
+            for (const token of tokens) {
+              const normalized = normalizeTechnologyName(token);
+              if (normalized) {
+                allTokens.add(normalized);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   const grouped = new Map<string, Set<string>>();
