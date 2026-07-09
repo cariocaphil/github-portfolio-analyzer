@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getPortfolioLenses } from "@/config/analysisLenses";
+import {
+  PORTFOLIO_ANALYSIS_LENSES,
+  getPortfolioLenses,
+} from "@/config/analysisLenses";
 import { buildLensContextMarkdown } from "../lensContextMapper";
 import { buildPortfolioContextCache } from "../portfolioContextBuilder";
 import { createSampleEvidence } from "./fixtures";
@@ -7,7 +10,9 @@ import { createSampleEvidence } from "./fixtures";
 describe("lensContextMapper", () => {
   it("filters context for project evolution lens", () => {
     const evidence = createSampleEvidence();
-    const lens = getPortfolioLenses().find((item) => item.id === "project-evolution");
+    const lens = PORTFOLIO_ANALYSIS_LENSES.find(
+      (item) => item.id === "project-evolution",
+    );
     expect(lens).toBeDefined();
 
     const markdown = buildLensContextMarkdown({

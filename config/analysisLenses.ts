@@ -155,12 +155,23 @@ export const PORTFOLIO_ANALYSIS_LENSES: AnalysisLens[] = [
   },
 ];
 
+/**
+ * MVP default: only run core portfolio lenses.
+ * Remaining lenses stay implemented and can be re-enabled via configuration.
+ */
+const DEFAULT_ENABLED_PORTFOLIO_LENS_IDS = new Set<string>([
+  "technical-breadth",
+  "project-complexity",
+]);
+
 export function getRepositoryLenses(): AnalysisLens[] {
   return REPOSITORY_ANALYSIS_LENSES;
 }
 
 export function getPortfolioLenses(): AnalysisLens[] {
-  return PORTFOLIO_ANALYSIS_LENSES;
+  return PORTFOLIO_ANALYSIS_LENSES.filter((lens) =>
+    DEFAULT_ENABLED_PORTFOLIO_LENS_IDS.has(lens.id),
+  );
 }
 
 export function getLensById(id: string): AnalysisLens | undefined {

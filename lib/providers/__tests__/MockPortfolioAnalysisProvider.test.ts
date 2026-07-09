@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getPortfolioLenses } from "@/config/analysisLenses";
 import { MockPortfolioAnalysisProvider } from "../MockPortfolioAnalysisProvider";
 import { createSampleEvidence } from "../azure/__tests__/fixtures";
 
@@ -9,7 +10,7 @@ describe("MockPortfolioAnalysisProvider", () => {
 
     const report = await provider.analyzePortfolio(evidence);
 
-    expect(report.sections.length).toBe(7);
+    expect(report.sections.length).toBe(getPortfolioLenses().length);
     expect(report.metadata.analysisSource).toBe("mock");
     expect(report.metadata.providerName).toBe("MockPortfolioAnalysisProvider");
     expect(report.developerSnapshot.username).toBe("dev-user");
