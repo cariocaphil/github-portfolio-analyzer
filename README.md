@@ -23,6 +23,8 @@ This repository includes:
 - Optional CV ↔ GitHub portfolio alignment (Azure OpenAI)
 - Unified home page workflow: one **Analyze** button, optional CV input
 - Reports workspace with independent, collapsible report cards and grouped navigation
+- Production error handling: typed application errors, centralized API mapping, user-friendly alerts, and structured server diagnostics
+- GitHub resilience: bounded repository fetch concurrency and automatic retries for transient upstream failures (502/503/504)
 
 ## Architecture Alignment
 
@@ -96,6 +98,16 @@ Shown only when alignment completed successfully:
 
 Reports can be expanded or collapsed independently. Expanding one report does not affect the other.
 
+## Error Handling
+
+The application separates **user-facing errors** from **internal diagnostics**.
+
+When something goes wrong during analysis or CV upload, the UI shows a compact alert with a short title and actionable message—for example, *"GitHub is temporarily unavailable. Please try again in a few moments."* The browser never receives raw upstream HTML, Azure SDK exceptions, stack traces, or provider implementation details.
+
+On the server, errors are normalized into a typed hierarchy (`ApplicationError` and subclasses such as `GitHubServiceError`, `AzureOpenAIServiceError`, `BlobStorageError`, and `DocumentIntelligenceError`). API routes use a single mapper (`handleApiRouteError`) that returns only `{ error: { title, message } }` while structured logs retain full context: provider, endpoint, HTTP status, response headers, truncated response body, request duration, retry attempts, and correlation IDs where available.
+
+GitHub API requests automatically retry transient failures (502, 503, 504, and rate limits) with exponential backoff before surfacing an error. Repository evidence collection is concurrency-limited to avoid overwhelming the GitHub API during large portfolios.
+
 ## Current Behavior (Important)
 
 - GitHub API calls are real and data-dependent.
@@ -149,6 +161,17 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## Container Deployment
+
+The app ships as a Next.js standalone container image. Build locally with Podman or Docker:
+
+```bash
+podman build -f containerfile -t github-portfolio-analyzer:local .
+podman run --rm -p 3000:3000 --env-file .env.local github-portfolio-analyzer:local
+```
+
+Production deployment to Azure Container Apps is automated via `.github/workflows/deploy.yml` on pushes to `main`.
+
 ## Project Structure
 
 ```text
@@ -160,6 +183,7 @@ app/
 components/
   AnalysisInputForm.tsx       # GitHub username + optional CV + Analyze
   AnalysisProgress.tsx        # in-progress step display
+  AnalysisErrorAlert.tsx      # compact user-facing error alert
   reports/
     ReportsWorkspace.tsx      # collapsible report cards
     PortfolioAssessmentReportContent.tsx
@@ -182,7 +206,15 @@ lib/
     portfolio/
   azure/                      # blob, document intelligence, CV normalization
   cv/
+  errors/
+    application/              # typed ApplicationError hierarchy
+    apiErrorResponse.ts       # centralized API error mapping
+    normalizeApplicationError.ts
+    logApplicationError.ts
   github/
+    client.ts
+    concurrency.ts            # bounded parallel repository fetches
+    retry.ts                  # transient GitHub failure retries
   models/
   presentation/
     reportsWorkspace.ts       # workspace report presentation models
@@ -212,4 +244,5 @@ npm run lint
 - Technology grouping and representative repository selection happen only in the presentation layer and do not alter extracted evidence.
 - Generated reports include provider metadata (`analysisSource`, `generationTimestamp`, optional `providerName`/`providerVersion`).
 - Azure reports additionally include operational metadata such as per-request token usage (`requestTokenUsage`), analysis duration, and confidence aggregates.
+- API error responses expose only `title` and `message`; inspect server logs for full upstream diagnostics when debugging production issues.
 - The report UI reads from the full evidence model but does not expose every internal artifact. Repository mappings, confidence values, extracted facts, and evidence links remain in the underlying model for traceability and future drill-down features.
