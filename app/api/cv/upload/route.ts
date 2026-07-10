@@ -6,35 +6,39 @@ import {
   BlobConfigurationError,
   BlobUploadError,
 } from "@/lib/azure/blobStorageErrors";
-import { buildCandidateEvidenceSummary } from "@/lib/cv/buildCandidateEvidenceSummary";
-import { buildCvExtractionSummary } from "@/lib/cv/buildCvExtractionSummary";
-import { CvNormalizationError } from "@/lib/azure/cvNormalizerErrors";
 import {
   DocumentAnalysisError,
   DocumentAuthenticationError,
   DocumentConfigurationError,
 } from "@/lib/azure/documentIntelligenceErrors";
+import { ValidationError } from "@/lib/errors/application/types";
+import {
+  createApiErrorPayload,
+  createApiErrorResponse,
+} from "@/lib/errors/apiErrorResponse";
+import { logApplicationError } from "@/lib/errors/logApplicationError";
+import { normalizeApplicationError } from "@/lib/errors/normalizeApplicationError";
+import { buildCandidateEvidenceSummary } from "@/lib/cv/buildCandidateEvidenceSummary";
+import { buildCvExtractionSummary } from "@/lib/cv/buildCvExtractionSummary";
 import {
   isCvUploadFile,
   validateCvUpload,
 } from "@/lib/cv/cvUploadValidation";
 
-function buildAnalysisFailureResponse(
-  error: DocumentAnalysisError | DocumentAuthenticationError,
-  uploadResult?: CvBlobUploadResult,
+function buildCvFailurePayload(
+  uploadResult: CvBlobUploadResult | undefined,
+  errorPayload: ReturnType<typeof createApiErrorPayload>,
+  stage: string,
 ) {
-  return NextResponse.json(
-    {
-      success: false,
-      stage: "document-analysis",
-      error: error.message,
-      blobName: uploadResult?.blobName,
-      url: uploadResult?.url,
-      filename: uploadResult?.filename,
-      size: uploadResult?.size,
-    },
-    { status: error.statusCode ?? 502 },
-  );
+  return {
+    success: false as const,
+    stage,
+    ...errorPayload,
+    blobName: uploadResult?.blobName,
+    url: uploadResult?.url,
+    filename: uploadResult?.filename,
+    size: uploadResult?.size,
+  };
 }
 
 export async function POST(request: Request) {
@@ -46,9 +50,11 @@ export async function POST(request: Request) {
     try {
       formData = await request.formData();
     } catch {
-      return NextResponse.json(
-        { success: false, stage: "validation", error: "A CV PDF file is required." },
-        { status: 400 },
+      return createApiErrorResponse(
+        new ValidationError({
+          title: "File upload could not be completed",
+          userMessage: "A CV PDF file is required.",
+        }),
       );
     }
 
@@ -56,16 +62,21 @@ export async function POST(request: Request) {
     const validation = validateCvUpload(fileEntry);
 
     if (!validation.ok) {
-      return NextResponse.json(
-        { success: false, stage: "validation", error: validation.error },
-        { status: validation.status },
+      return createApiErrorResponse(
+        new ValidationError({
+          title: "File upload could not be completed",
+          userMessage: validation.error,
+          httpStatus: validation.status,
+        }),
       );
     }
 
     if (!isCvUploadFile(fileEntry)) {
-      return NextResponse.json(
-        { success: false, stage: "validation", error: "A CV PDF file is required." },
-        { status: 400 },
+      return createApiErrorResponse(
+        new ValidationError({
+          title: "File upload could not be completed",
+          userMessage: "A CV PDF file is required.",
+        }),
       );
     }
 
@@ -94,15 +105,10 @@ export async function POST(request: Request) {
         },
       });
       candidateEvidence = normalizationResult.candidateEvidence;
-    } catch (error) {
+    } catch {
       normalizationError =
-        error instanceof CvNormalizationError
-          ? error.message
-          : "Azure OpenAI could not normalize the extracted CV.";
+        "CV normalization is temporarily unavailable. Portfolio analysis will continue without CV alignment.";
     }
-
-    // TODO V7.5:
-    // Compare CandidateEvidenceModel against GitHub portfolio evidence.
 
     return NextResponse.json({
       success: true,
@@ -118,50 +124,29 @@ export async function POST(request: Request) {
         : buildCvExtractionSummary(rawExtraction),
     });
   } catch (error) {
-    if (error instanceof BlobConfigurationError) {
-      return NextResponse.json(
-        { success: false, stage: "blob-storage", error: error.message },
-        { status: 503 },
-      );
-    }
+    const applicationError = normalizeApplicationError(error);
+    logApplicationError(applicationError, {
+      route: "/api/cv/upload",
+      operation: "cv_upload",
+    });
 
-    if (error instanceof DocumentConfigurationError) {
-      return NextResponse.json(
-        {
-          success: false,
-          stage: "document-analysis",
-          error: error.message,
-          blobName: uploadResult?.blobName,
-          url: uploadResult?.url,
-        },
-        { status: 503 },
-      );
-    }
+    const stage =
+      error instanceof BlobConfigurationError ||
+      error instanceof BlobUploadError
+        ? "blob-storage"
+        : error instanceof DocumentConfigurationError ||
+            error instanceof DocumentAnalysisError ||
+            error instanceof DocumentAuthenticationError
+          ? "document-analysis"
+          : "upload";
 
-    if (error instanceof BlobUploadError) {
-      return NextResponse.json(
-        { success: false, stage: "blob-storage", error: error.message },
-        { status: 500 },
-      );
-    }
-
-    if (
-      error instanceof DocumentAnalysisError ||
-      error instanceof DocumentAuthenticationError
-    ) {
-      return buildAnalysisFailureResponse(error, uploadResult);
-    }
-
-    console.error("CV upload failed:", error);
     return NextResponse.json(
-      {
-        success: false,
-        stage: "upload",
-        error: "CV upload failed.",
-        blobName: uploadResult?.blobName,
-        url: uploadResult?.url,
-      },
-      { status: 500 },
+      buildCvFailurePayload(
+        uploadResult,
+        createApiErrorPayload(applicationError),
+        stage,
+      ),
+      { status: applicationError.httpStatus },
     );
   }
 }

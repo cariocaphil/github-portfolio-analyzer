@@ -1,30 +1,43 @@
+import { truncateResponseBody, sanitizeResponseHeaders } from "@/lib/errors/application/diagnostics";
+import { logGitHubRetryEvent } from "@/lib/github/githubRetryLogger";
 import { withGitHubRetry } from "./retry";
 
+export interface GitHubApiErrorDetails {
+  path?: string;
+  responseBodyPreview?: string;
+  responseHeaders?: Record<string, string>;
+}
+
 export class GitHubApiError extends Error {
+  readonly details?: GitHubApiErrorDetails;
+
   constructor(
     message: string,
     public readonly status: number,
-    public readonly retryAfter?: number,
+    details?: GitHubApiErrorDetails,
   ) {
     super(message);
     this.name = "GitHubApiError";
+    this.details = details;
   }
 }
 
 export class GitHubRateLimitError extends GitHubApiError {
+  readonly retryAfter?: number;
+
   constructor(retryAfter?: number) {
     super(
-      "GitHub API rate limit exceeded. Provide a GITHUB_TOKEN for higher limits or try again later.",
+      "GitHub API rate limit exceeded.",
       403,
-      retryAfter,
     );
     this.name = "GitHubRateLimitError";
+    this.retryAfter = retryAfter;
   }
 }
 
 export class GitHubNotFoundError extends GitHubApiError {
   constructor(resource: string) {
-    super(`GitHub resource not found: ${resource}`, 404);
+    super(`GitHub resource not found: ${resource}`, 404, { path: resource });
     this.name = "GitHubNotFoundError";
   }
 }
@@ -186,7 +199,18 @@ export class GitHubClient {
     path: string,
     options: FetchOptions = {},
   ): Promise<T> {
-    return withGitHubRetry(() => this.executeRequest<T>(path, options));
+    return withGitHubRetry(
+      () => this.executeRequest<T>(path, options),
+      {
+        onRetry: (attempt, error) => {
+          logGitHubRetryEvent({
+            path,
+            attempt,
+            error,
+          });
+        },
+      },
+    );
   }
 
   private async executeRequest<T>(
@@ -223,8 +247,13 @@ export class GitHubClient {
     if (!response.ok) {
       const body = await response.text();
       throw new GitHubApiError(
-        `GitHub API error (${response.status}): ${body || response.statusText}`,
+        `GitHub API request failed with status ${response.status}`,
         response.status,
+        {
+          path,
+          responseBodyPreview: truncateResponseBody(body),
+          responseHeaders: sanitizeResponseHeaders(response.headers),
+        },
       );
     }
 

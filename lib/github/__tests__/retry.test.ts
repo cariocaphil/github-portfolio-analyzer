@@ -49,6 +49,16 @@ describe("github retry", () => {
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
+  it("retries GitHub 504 errors", async () => {
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(new GitHubApiError("gateway timeout", 504))
+      .mockResolvedValue("ok");
+
+    await expect(withGitHubRetry(operation, { maxRetries: 3 })).resolves.toBe("ok");
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
   it("does not retry non-retryable GitHub errors", async () => {
     const operation = vi
       .fn()
@@ -63,6 +73,7 @@ describe("github retry", () => {
   it("identifies retryable status codes", () => {
     expect(isGitHubRetryableError(new GitHubApiError("x", 502))).toBe(true);
     expect(isGitHubRetryableError(new GitHubApiError("x", 503))).toBe(true);
+    expect(isGitHubRetryableError(new GitHubApiError("x", 504))).toBe(true);
     expect(isGitHubRetryableError(new GitHubApiError("x", 429))).toBe(true);
     expect(isGitHubRetryableError(new GitHubApiError("x", 404))).toBe(false);
   });

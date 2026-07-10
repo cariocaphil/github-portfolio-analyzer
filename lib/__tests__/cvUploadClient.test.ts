@@ -87,7 +87,10 @@ describe("uploadCv", () => {
         status: 400,
         json: async () => ({
           success: false,
-          error: "Only PDF files are supported.",
+          error: {
+            title: "File upload could not be completed",
+            message: "Only PDF files are supported.",
+          },
         }),
       }),
     );

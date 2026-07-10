@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { AnalysisErrorAlert } from "@/components/AnalysisErrorAlert";
 import { AnalysisInputForm } from "@/components/AnalysisInputForm";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { ReportView } from "@/components/ReportView";
 import type { AnalysisProgressStepId } from "@/lib/analysis/analysisProgress";
-import { runAnalysisWorkflow } from "@/lib/analysis/runAnalysisWorkflow";
+import { runAnalysisWorkflow, AnalysisWorkflowError } from "@/lib/analysis/runAnalysisWorkflow";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 
 export default function HomePage() {
   const [report, setReport] = useState<DeveloperPortfolioReport | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ title: string; message: string } | null>(
+    null,
+  );
   const [analysisIncludesCv, setAnalysisIncludesCv] = useState(false);
   const [currentStepId, setCurrentStepId] =
     useState<AnalysisProgressStepId | null>(null);
@@ -35,7 +38,17 @@ export default function HomePage() {
 
       setReport(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed.");
+      if (err instanceof AnalysisWorkflowError) {
+        setError({ title: err.title, message: err.message });
+      } else {
+        setError({
+          title: "Analysis could not be completed",
+          message:
+            err instanceof Error
+              ? err.message
+              : "An unexpected error occurred. Please try again.",
+        });
+      }
     } finally {
       setLoading(false);
       setCurrentStepId(null);
@@ -65,12 +78,7 @@ export default function HomePage() {
       )}
 
       {error && (
-        <div
-          role="alert"
-          className="mt-8 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800"
-        >
-          {error}
-        </div>
+        <AnalysisErrorAlert title={error.title} message={error.message} />
       )}
 
       {report && !loading && <ReportView report={report} />}

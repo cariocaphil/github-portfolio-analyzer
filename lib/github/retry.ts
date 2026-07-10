@@ -1,4 +1,4 @@
-const RETRYABLE_STATUS_CODES = new Set([429, 502, 503]);
+const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 
 function isGitHubRateLimitError(
   error: unknown,

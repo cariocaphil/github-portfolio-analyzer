@@ -1,13 +1,17 @@
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
+import { parseApiErrorMessage } from "@/lib/errors/apiErrorResponse";
 import { uploadCv } from "@/lib/cvUploadClient";
 import type { CvAnalysisContext } from "@/types/cvAnalysisContext";
 import { EMPTY_CV_ANALYSIS_CONTEXT } from "@/types/cvAnalysisContext";
 import type { AnalysisProgressStepId } from "@/lib/analysis/analysisProgress";
 
 export class AnalysisWorkflowError extends Error {
-  constructor(message: string) {
+  readonly title: string;
+
+  constructor(title: string, message: string) {
     super(message);
     this.name = "AnalysisWorkflowError";
+    this.title = title;
   }
 }
 
@@ -35,11 +39,14 @@ async function requestPortfolioAnalysis(
 
   const data = (await response.json()) as
     | DeveloperPortfolioReport
-    | { error: string };
+    | { error?: string | { title?: string; message?: string } };
 
   if (!response.ok) {
-    const errorData = data as { error: string };
-    throw new AnalysisWorkflowError(errorData.error || "Analysis failed.");
+    const parsed = parseApiErrorMessage(
+      data as { error?: string | { title?: string; message?: string } },
+      "Analysis failed.",
+    );
+    throw new AnalysisWorkflowError(parsed.title, parsed.message);
   }
 
   return data as DeveloperPortfolioReport;
