@@ -4,12 +4,17 @@ import type { ExecutiveSummaryViewModel } from "@/lib/presentation/reportPresent
 interface ExecutiveSummaryProps {
   developer: DeveloperSnapshot;
   summary: ExecutiveSummaryViewModel;
+  sectionId?: string;
 }
 
-export function ExecutiveSummary({ developer, summary }: ExecutiveSummaryProps) {
+export function ExecutiveSummary({
+  developer,
+  summary,
+  sectionId = "executive-summary",
+}: ExecutiveSummaryProps) {
   return (
     <section
-      id="executive-summary"
+      id={sectionId}
       className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
     >
       <h2 className="text-xl font-semibold text-slate-900">Executive Summary</h2>

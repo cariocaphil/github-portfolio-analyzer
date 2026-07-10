@@ -1,3 +1,7 @@
+import type {
+  CvAlignmentStatus,
+  CvPortfolioAlignmentReport,
+} from "@/domain/cvPortfolioAlignment";
 import type { EvidenceSource } from "./evidence";
 
 export type LensCategory = "repository" | "portfolio";
@@ -51,7 +55,11 @@ export interface ReportMetadata {
   lowestConfidence?: number;
   aggregatedTechnologies?: string[];
   requestTokenUsage?: Array<{
-    requestType: "lens_analysis" | "executive_summary";
+    requestType:
+      | "lens_analysis"
+      | "executive_summary"
+      | "cv_normalization"
+      | "cv_alignment";
     lensId?: string;
     schemaName: string;
     promptTokens: number;
@@ -65,4 +73,7 @@ export interface DeveloperPortfolioReport {
   sections: ReportSection[];
   improvementSuggestions: string[];
   metadata: ReportMetadata;
+  cvPortfolioAlignment?: CvPortfolioAlignmentReport | null;
+  cvAlignmentStatus?: CvAlignmentStatus;
+  cvAlignmentMessage?: string;
 }

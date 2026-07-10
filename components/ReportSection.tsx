@@ -9,16 +9,20 @@ import {
 
 interface ReportSectionViewProps {
   section: ReportSection;
+  sectionId?: string;
 }
 
-export function ReportSectionView({ section }: ReportSectionViewProps) {
+export function ReportSectionView({
+  section,
+  sectionId,
+}: ReportSectionViewProps) {
   const scoreSummary = toSectionSummary(section);
   const keyFindings = getDistinctKeyFindings(section, scoreSummary.summary, 3);
   const representativeRepositories = getRepresentativeRepositories(section);
 
   return (
     <section
-      id={slugFromLensId(section.lensId)}
+      id={sectionId ?? slugFromLensId(section.lensId)}
       className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
     >
       <header className="border-b border-slate-100 pb-4">

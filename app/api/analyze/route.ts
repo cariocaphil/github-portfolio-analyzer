@@ -1,12 +1,21 @@
+import type { CandidateEvidenceModel } from "@/domain/candidateEvidence";
 import { NextResponse } from "next/server";
 import {
   analyzeGitHubPortfolio,
   formatAnalysisError,
 } from "@/lib/services/analyzePortfolio";
 
+interface AnalyzeRequestBody {
+  username?: string;
+  candidateEvidence?: CandidateEvidenceModel | null;
+  cvSource?: string;
+  cvExtractionFailed?: boolean;
+  cvUploaded?: boolean;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { username?: string };
+    const body = (await request.json()) as AnalyzeRequestBody;
     const username = body.username?.trim();
 
     if (!username) {
@@ -23,7 +32,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const report = await analyzeGitHubPortfolio(username);
+    const report = await analyzeGitHubPortfolio(username, {
+      candidateEvidence: body.candidateEvidence ?? undefined,
+      cvSource: body.cvSource,
+      cvExtractionFailed: body.cvExtractionFailed,
+      cvUploaded: body.cvUploaded,
+    });
     return NextResponse.json(report);
   } catch (error) {
     const message = formatAnalysisError(error);

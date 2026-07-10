@@ -1,3 +1,4 @@
+import type { CandidateEvidenceModel } from "@/domain/candidateEvidence";
 import { aggregatePortfolioEvidence } from "@/lib/analysis/portfolio/aggregator";
 import { analyzeRepositories } from "@/lib/analysis/repository/pipeline";
 import { ProviderAnalysisError } from "@/lib/errors/ProviderAnalysisError";
@@ -9,9 +10,16 @@ import { fetchGitHubPortfolio } from "@/lib/github/evidenceProvider";
 import { GitHubRateLimitError } from "@/lib/github/client";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 import { getPortfolioAnalysisProvider } from "@/lib/providers/PortfolioAnalysisProviderFactory";
+import {
+  runCvPortfolioAlignmentStep,
+  type CvAlignmentInput,
+} from "@/lib/services/cvPortfolioAlignmentStep";
+
+export interface AnalyzePortfolioOptions extends CvAlignmentInput {}
 
 export async function analyzeGitHubPortfolio(
   username: string,
+  options?: AnalyzePortfolioOptions,
 ): Promise<DeveloperPortfolioReport> {
   const portfolio = await fetchGitHubPortfolio(username);
   const repositoryProfiles = analyzeRepositories(portfolio.repositories);
@@ -21,7 +29,14 @@ export async function analyzeGitHubPortfolio(
   );
 
   const provider = getPortfolioAnalysisProvider();
-  return provider.analyzePortfolio(unifiedEvidence);
+  const report = await provider.analyzePortfolio(unifiedEvidence);
+  const alignmentResult = await runCvPortfolioAlignmentStep(
+    report,
+    unifiedEvidence,
+    options,
+  );
+
+  return alignmentResult.report;
 }
 
 export function formatAnalysisError(error: unknown): string {

@@ -1,42 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { AnalyzeForm } from "@/components/AnalyzeForm";
-import { CvUploadSection } from "@/components/CvUploadSection";
+import { AnalysisInputForm } from "@/components/AnalysisInputForm";
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { ReportView } from "@/components/ReportView";
+import type { AnalysisProgressStepId } from "@/lib/analysis/analysisProgress";
+import { runAnalysisWorkflow } from "@/lib/analysis/runAnalysisWorkflow";
 import type { DeveloperPortfolioReport } from "@/lib/models/report";
 
 export default function HomePage() {
   const [report, setReport] = useState<DeveloperPortfolioReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analysisIncludesCv, setAnalysisIncludesCv] = useState(false);
+  const [currentStepId, setCurrentStepId] =
+    useState<AnalysisProgressStepId | null>(null);
 
-  async function handleAnalyze(username: string) {
+  async function handleAnalyze(input: {
+    username: string;
+    cvFile: File | null;
+  }) {
     setLoading(true);
     setError(null);
     setReport(null);
+    setAnalysisIncludesCv(Boolean(input.cvFile));
+    setCurrentStepId(input.cvFile ? "cv-extract" : "github");
 
     try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
+      const result = await runAnalysisWorkflow({
+        username: input.username,
+        cvFile: input.cvFile,
+        onStepChange: setCurrentStepId,
       });
 
-      const data = (await response.json()) as
-        | DeveloperPortfolioReport
-        | { error: string };
-
-      if (!response.ok) {
-        const errorData = data as { error: string };
-        throw new Error(errorData.error || "Analysis failed.");
-      }
-
-      setReport(data as DeveloperPortfolioReport);
+      setReport(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed.");
     } finally {
       setLoading(false);
+      setCurrentStepId(null);
     }
   }
 
@@ -47,27 +49,19 @@ export default function HomePage() {
           GitHub Portfolio Analyzer
         </h1>
         <p className="mt-2 max-w-2xl text-slate-600">
-          Generate an evidence-based Engineering Evidence Report from a
-          developer&apos;s public GitHub portfolio. Analysis is transparent,
-          deterministic at the repository level, and traceable to observable
-          artifacts.
+          Run one engineering assessment from a public GitHub portfolio. Optionally
+          enrich the analysis with a CV to generate a CV ↔ GitHub alignment
+          report alongside the Engineering Portfolio Assessment.
         </p>
       </header>
 
-      <AnalyzeForm onAnalyze={handleAnalyze} loading={loading} />
-
-      <CvUploadSection />
+      <AnalysisInputForm onAnalyze={handleAnalyze} loading={loading} />
 
       {loading && (
-        <div
-          role="status"
-          className="mt-8 rounded-lg border border-slate-200 bg-white p-6 text-slate-600"
-        >
-          <div className="flex items-center gap-3">
-            <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
-            Collecting GitHub evidence and generating report...
-          </div>
-        </div>
+        <AnalysisProgress
+          includeCv={analysisIncludesCv}
+          currentStepId={currentStepId}
+        />
       )}
 
       {error && (

@@ -2,15 +2,19 @@ import type { TechnologyCategoryGroup } from "@/lib/presentation/reportPresentat
 
 interface TechnologyBreakdownProps {
   groups: TechnologyCategoryGroup[];
+  sectionId?: string;
 }
 
-export function TechnologyBreakdown({ groups }: TechnologyBreakdownProps) {
+export function TechnologyBreakdown({
+  groups,
+  sectionId = "technology-breakdown",
+}: TechnologyBreakdownProps) {
   const total = groups.reduce((sum, group) => sum + group.technologies.length, 0);
   const max = Math.max(...groups.map((group) => group.technologies.length), 1);
 
   return (
     <section
-      id="technology-breakdown"
+      id={sectionId}
       className="scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
     >
       <h2 className="text-lg font-semibold text-slate-900">Technology Breakdown</h2>
