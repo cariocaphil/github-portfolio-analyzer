@@ -26,17 +26,17 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to Azure Container Registry
-        run: |
-          az acr login --name githubportfolioanalyzeracr
+        run: az acr login --name githubportfolioanalyzeracr
 
-      - name: Build Docker image
+      - name: Build container image
         run: |
           docker build \
+            -f containerfile \
             -t githubportfolioanalyzeracr.azurecr.io/github-portfolio-analyzer:${{ github.sha }} \
             -t githubportfolioanalyzeracr.azurecr.io/github-portfolio-analyzer:latest \
             .
 
-      - name: Push Docker images
+      - name: Push container images
         run: |
           docker push githubportfolioanalyzeracr.azurecr.io/github-portfolio-analyzer:${{ github.sha }}
           docker push githubportfolioanalyzeracr.azurecr.io/github-portfolio-analyzer:latest
