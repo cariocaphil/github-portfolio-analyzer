@@ -1,3 +1,5 @@
+import { withGitHubRetry } from "./retry";
+
 export class GitHubApiError extends Error {
   constructor(
     message: string,
@@ -37,6 +39,7 @@ interface FetchOptions {
 
 const DEFAULT_ACCEPT = "application/vnd.github+json";
 const TOPICS_ACCEPT = "application/vnd.github+json, application/vnd.github.mercy-preview+json";
+const USER_AGENT = "github-portfolio-analyzer";
 
 export class GitHubClient {
   private readonly token?: string;
@@ -183,8 +186,16 @@ export class GitHubClient {
     path: string,
     options: FetchOptions = {},
   ): Promise<T> {
+    return withGitHubRetry(() => this.executeRequest<T>(path, options));
+  }
+
+  private async executeRequest<T>(
+    path: string,
+    options: FetchOptions = {},
+  ): Promise<T> {
     const headers: Record<string, string> = {
       Accept: options.accept ?? DEFAULT_ACCEPT,
+      "User-Agent": USER_AGENT,
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
