@@ -2,11 +2,46 @@
 
 ## Purpose
 
-The GitHub Portfolio Analyzer generates an evidence-based Engineering Evidence Report from a developer's public GitHub portfolio.
+The GitHub Portfolio Analyzer is an engineering assessment platform that generates evidence-based reports from a developer's public GitHub portfolio.
+
+The primary output is the **Engineering Portfolio Assessment**. An optional **CV ↔ GitHub Alignment Report** can be produced when the user supplies a CV PDF as part of the same analysis run.
 
 The application is designed around transparency and explainability.
 
 It analyzes only observable engineering evidence and never infers personal characteristics such as intelligence, personality, or hiring suitability.
+
+---
+
+# Application Workflow
+
+The home page exposes a single primary action: **Analyze**.
+
+```text
+User input
+  ├── GitHub username (required)
+  └── CV PDF (optional; selected but not processed until Analyze)
+
+Analyze (one click)
+  ├── [optional] CV upload → extraction → normalization
+  ├── GitHub evidence collection
+  ├── Repository analysis
+  ├── Portfolio analysis
+  ├── [optional] CV ↔ GitHub alignment
+  └── Reports workspace
+
+Reports workspace
+  ├── Engineering Portfolio Assessment (always)
+  └── CV ↔ GitHub Alignment Report (when alignment completed)
+```
+
+Key workflow properties:
+
+* One analysis run — the user never needs to analyze twice.
+* CV upload is optional enrichment, not a separate workflow.
+* CV processing failures do not block portfolio analysis.
+* Each generated report is an independent, collapsible artifact in the Reports workspace.
+
+Client orchestration lives in `lib/analysis/runAnalysisWorkflow.ts`. Backend analysis stages are unchanged.
 
 ---
 
@@ -18,6 +53,7 @@ The architecture intentionally separates:
 2. Evidence normalization
 3. Evidence interpretation
 4. Report presentation
+5. Workspace organization (independent report cards and navigation)
 
 The AI layer never has direct access to GitHub.
 
@@ -80,7 +116,15 @@ Portfolio Analysis Provider
 
 ↓
 
-Engineering Evidence Report
+Engineering Portfolio Assessment
+
+↓
+
+[optional] CV Portfolio Alignment
+
+↓
+
+Reports Workspace
 ```
 
 ---
@@ -265,6 +309,28 @@ The alignment step:
 * produces practical CV improvement recommendations
 * uses constructive, hiring-manager-friendly language
 
-Alignment is optional. If no CV was uploaded, portfolio analysis behaves unchanged and no alignment section is shown. If CV extraction or normalization failed, portfolio analysis still completes and the report shows a graceful skip message.
+Alignment is optional. If no CV was uploaded, portfolio analysis behaves unchanged and no alignment report is shown. If CV extraction or normalization failed, portfolio analysis still completes and the workspace shows a graceful skip notice.
 
 Alignment logic lives outside UI components and does not make the CV the primary source of truth.
+
+---
+
+# Reports Workspace (Presentation)
+
+The Reports workspace is a presentation-layer concept. It does not alter analysis output; it organizes completed analyses for reading.
+
+Presentation models in `lib/presentation/reportsWorkspace.ts` describe independent workspace reports:
+
+* **Engineering Portfolio Assessment** — primary report; always present after analysis
+* **CV ↔ GitHub Alignment Report** — secondary report; present only when alignment completed
+
+Each workspace report has:
+
+* a stable report identifier
+* header metadata (sources, repository count or alignment score, generation timestamp)
+* a list of navigable sections
+* independent expand/collapse state in the UI
+
+Grouped navigation (`ReportNavigation`) lists sections only for expanded reports. This keeps navigation synchronized with what the user can currently read.
+
+Future report types (for example Job Match or Interview Preparation) should register as additional workspace reports without changing the analysis pipeline.

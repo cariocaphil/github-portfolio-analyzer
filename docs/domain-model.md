@@ -2,7 +2,7 @@
 
 ## Core Concepts
 
-The application revolves around seven domain concepts.
+The application revolves around evidence models, analysis outputs, and workspace presentation.
 
 ```text
 GitHub Portfolio
@@ -29,7 +29,15 @@ Portfolio Analysis Lens
 
 ↓
 
-Engineering Evidence Report
+Engineering Portfolio Assessment
+
+↓
+
+[optional] CV Portfolio Alignment Report
+
+↓
+
+Reports Workspace (presentation)
 ```
 
 ---
@@ -128,9 +136,9 @@ Portfolio lenses analyze the portfolio as a whole.
 
 ---
 
-# Engineering Evidence Report
+# Engineering Portfolio Assessment
 
-The final report presented to the user.
+The primary analysis output (`DeveloperPortfolioReport`).
 
 It consists of:
 
@@ -140,6 +148,7 @@ It consists of:
 * evidence references
 * portfolio improvement suggestions
 * report metadata
+* optional CV alignment fields when a CV was part of the analysis run
 
 Report metadata describes how the report was generated. It includes:
 
@@ -152,6 +161,8 @@ Report metadata describes how the report was generated. It includes:
 Metadata belongs to the generated report, not to the Unified Portfolio Evidence Model.
 
 Every observation must be explainable and traceable back to engineering evidence.
+
+This assessment is always shown as the primary report card in the Reports workspace.
 
 ---
 
@@ -195,3 +206,29 @@ It includes:
 * alignment metadata (provider, model, timestamp, repository count)
 
 Alignment findings reference CV evidence and GitHub evidence where available and include confidence levels.
+
+When alignment completes, this report is shown as a separate card in the Reports workspace alongside the Engineering Portfolio Assessment.
+
+---
+
+# Reports Workspace
+
+A presentation-layer container for independent analysis artifacts.
+
+The workspace is built from analysis output by `buildReportsWorkspace()` and rendered by `ReportsWorkspace`. It is not part of the analysis pipeline.
+
+A workspace contains zero or more **workspace reports**. Each workspace report has:
+
+* report identifier and title
+* header metadata (sources, counts, scores, timestamps)
+* section list for navigation
+* default expand/collapse behavior
+
+Current workspace report types:
+
+| Report | Availability |
+|--------|----------------|
+| Engineering Portfolio Assessment | Always after analysis |
+| CV ↔ GitHub Alignment Report | When `cvPortfolioAlignment` is present |
+
+The workspace model is designed so additional report types can be added without coupling reports to one another.
