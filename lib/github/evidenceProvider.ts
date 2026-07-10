@@ -1,4 +1,5 @@
 import { GitHubClient, GitHubNotFoundError } from "./client";
+import { mapWithConcurrency } from "./concurrency";
 import type {
   GitHubPortfolio,
   RawRepositoryArtifact,
@@ -26,6 +27,8 @@ const ARTIFACT_PATHS = {
 } as const;
 
 const MAX_REPOSITORIES = 30;
+/** Max repositories fetched in parallel to avoid GitHub API overload. */
+const REPOSITORY_FETCH_CONCURRENCY = 4;
 
 export async function fetchGitHubPortfolio(
   username: string,
@@ -47,10 +50,10 @@ export async function fetchGitHubPortfolio(
     .filter((repo) => !repo.archived)
     .slice(0, MAX_REPOSITORIES);
 
-  const repositories = await Promise.all(
-    selectedRepos.map((repo) =>
-      fetchRepositoryEvidence(client, repo, username),
-    ),
+  const repositories = await mapWithConcurrency(
+    selectedRepos,
+    REPOSITORY_FETCH_CONCURRENCY,
+    (repo) => fetchRepositoryEvidence(client, repo, username),
   );
 
   return {

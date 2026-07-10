@@ -75,7 +75,7 @@ describe("azureBlobStorage", () => {
       }),
     );
     expect(result.filename).toBe("philippe-dijon-cv.pdf");
-    expect(result.blobName).toMatch(/^2026-07-09\/.+-cv\.pdf$/);
+    expect(result.blobName).toMatch(/^\d{4}-\d{2}-\d{2}\/.+-cv\.pdf$/);
     expect(result.url).toContain("testaccount.blob.core.windows.net/cvs/");
   });
 
