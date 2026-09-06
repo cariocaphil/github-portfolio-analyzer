@@ -104,76 +104,288 @@ The README keeps a short **Current Status** summary and how the system works tod
 
 ## Planned modernization sequence
 
-Future PRs continue the engineering story without rewriting the analysis methodology. Each item is intentionally scoped so AI-assisted work stays reviewable.
+Future PRs continue the engineering story without rewriting the core analysis methodology.
 
-### PR 12 — Hygiene and Dead Code Removal
+The modernization has four goals:
 
-- [ ] Remove orphaned UI (`CvDeveloperPreview`, unused `ReportVisuals` / helpers)
-- [ ] Clear stale TODOs that predate CV alignment
-- [ ] Opportunistic naming cleanups only where touched (no broad renames)
+1. make AI-assisted development safer and more consistent,
+2. strengthen existing service and data boundaries,
+3. make AI behavior measurable and observable,
+4. harden the deployed application for controlled public use.
 
-### PR 13 — CV Upload Service Extraction
-
-- [ ] Extract `processCvUpload()` (or equivalent) from `app/api/cv/upload/route.ts`
-- [ ] Keep the API route thin: transport + error mapping only
-- [ ] Mirror the `analyzeGitHubPortfolio` service boundary for testability
-
-### PR 14 — CV Type and Validation Consolidation
-
-- [ ] Unify overlapping CV context types (`CvAnalysisContext` / `CvAlignmentInput`)
-- [ ] Deduplicate client/server CV file validation rules and messages
-- [ ] Prefer shared types over manual field mapping across workflow → API → service
-
-### PR 15 — Server-Side CV Reference Flow
-
-- [ ] Avoid round-tripping full `candidateEvidence` (and PII) through the browser into `/api/analyze`
-- [ ] Pass a server-side reference (for example blob name / analysis handle) and rehydrate on the server
-- [ ] Keep portfolio analysis working when CV enrichment is absent or failed
-
-### PR 16 — Reports Workspace Registry
-
-- [ ] Replace hardcoded report-id switches with a registry of workspace reports
-- [ ] Single place to declare visibility, header, sections, and content component
-- [ ] Prepare for additional report types without growing `DeveloperPortfolioReport` ad hoc
-
-### PR 17 — Service and API Test Coverage
-
-- [ ] Add direct tests for `analyzeGitHubPortfolio` orchestration
-- [ ] Cover analyze and CV upload API routes (validation, error mapping, happy paths)
-- [ ] Prefer boundary tests over brittle UI snapshots unless a component owns non-trivial logic
-
-### PR 18 — Honest Analysis Progress
-
-- [ ] Align progress step timing with real workflow phases (CV compare does not finish before analyze)
-- [ ] Prefer coarse accurate steps, or stream/server callbacks if finer granularity is required
-- [ ] Keep progress UX understandable for portfolio-only and CV-enriched runs
-
-### PR 19 — Azure Module Layout Cleanup
-
-- [ ] Normalize root facades vs `lib/azure/` / `lib/providers/azure/` layout
-- [ ] Optional shared structured-completion helper for normalizer/alignment boilerplate
-- [ ] No changes to lens methodology or evidence contracts
-
-### PR 20 — Domain / Model Boundary Clarification
-
-- [ ] Document and enforce where types live (`domain/` vs `lib/models/` vs `types/`)
-- [ ] Reduce coupling of workspace/CV status fields into the primary portfolio report model
-- [ ] Consider an explicit multi-report analysis result shape before a third report type
-
-### Later / optional follow-ons
-
-- [ ] PR checks workflow (lint + test) on pull requests, separate from deploy-on-`main`
-- [ ] Shared env/config helpers across Azure subsystems
-- [ ] Provider abstraction for CV alignment (only if a second backend is needed)
-- [ ] Client-side GitHub username validation parity with the API
-- [ ] Re-enable additional portfolio lenses via configuration when cost/latency allows
+Each PR should remain narrowly scoped and independently reviewable.
 
 ---
 
-## Out of scope for modernization (unless explicitly reopened)
+### Phase 5 — Development and Engineering Foundation
 
-- Replacing deterministic repository analysis with LLM repository scanning
-- Giving any AI provider direct GitHub access
-- Merging portfolio and CV reports into a single undifferentiated document
-- Broad dependency upgrades or new tooling inside feature PRs
-- Personal/psychological inference features
+### PR 12 — Claude Development Guidance
+
+* [ ] Add repository-level `CLAUDE.md`
+* [ ] Document the current architecture and important code paths
+* [ ] Document the distinction between deterministic evidence collection and LLM interpretation
+* [ ] Record project-specific development principles and architectural boundaries
+* [ ] Document verified development, test, and build commands
+* [ ] Reference this roadmap for modernization priorities
+* [ ] Do not introduce runtime changes or Claude-specific application dependencies
+
+### PR 13 — Pull Request CI Quality Gates
+
+* [ ] Add a PR checks workflow separate from deployment
+* [ ] Run lint
+* [ ] Run Vitest
+* [ ] Run TypeScript / build validation
+* [ ] Require successful checks before modernization changes are merged
+* [ ] Keep deployment-on-`main` as a separate concern
+
+### PR 14 — Hygiene and Dead Code Removal
+
+* [ ] Remove orphaned UI (`CvDeveloperPreview`, unused `ReportVisuals` / helpers)
+* [ ] Clear stale TODOs that predate CV alignment
+* [ ] Remove clearly obsolete code paths discovered during repository inspection
+* [ ] Allow opportunistic naming cleanups only where touched
+* [ ] Avoid broad renames or architecture changes
+
+---
+
+### Phase 6 — Service and Data Boundary Cleanup
+
+### PR 15 — CV Upload Service Extraction
+
+* [ ] Extract `processCvUpload()` (or equivalent) from `app/api/cv/upload/route.ts`
+* [ ] Keep the API route responsible primarily for transport, validation, and error mapping
+* [ ] Move CV workflow orchestration into a testable service boundary
+* [ ] Mirror the existing `analyzeGitHubPortfolio` service structure where appropriate
+* [ ] Preserve current CV behavior
+
+### PR 16 — CV Type and Validation Consolidation
+
+* [ ] Unify overlapping CV context types such as `CvAnalysisContext` / `CvAlignmentInput`
+* [ ] Deduplicate client/server CV file validation rules where practical
+* [ ] Centralize shared validation messages and constraints
+* [ ] Prefer shared typed contracts over repeated manual mapping across workflow → API → service
+* [ ] Preserve explicit boundaries where client and server representations genuinely differ
+
+### PR 17 — Server-Side CV Reference Flow
+
+* [ ] Avoid round-tripping full normalized `candidateEvidence` through the browser into `/api/analyze`
+* [ ] Pass an opaque server-side analysis reference, blob reference, or equivalent handle
+* [ ] Rehydrate CV-derived evidence on the server
+* [ ] Reduce unnecessary exposure of CV-derived personal data to the client
+* [ ] Keep portfolio-only analysis completely independent of CV enrichment
+* [ ] Preserve graceful portfolio analysis when CV processing fails
+
+This PR should explicitly document the resulting trust and data-flow boundary.
+
+### PR 18 — Service and API Coverage
+
+* [ ] Add direct tests for `analyzeGitHubPortfolio` orchestration
+* [ ] Add direct tests for the extracted CV upload service
+* [ ] Cover `/api/analyze` validation, error mapping, and happy paths
+* [ ] Cover `/api/cv/upload` validation, error mapping, and happy paths
+* [ ] Prefer service and boundary tests over brittle UI snapshots
+* [ ] Add coverage reporting / Codecov once meaningful boundary coverage exists
+
+---
+
+### Phase 7 — AI Contract and Prompt Maturity
+
+### PR 19 — Prompt Architecture
+
+* [ ] Inventory all Azure OpenAI prompt paths
+* [ ] Normalize prompt ownership and naming
+* [ ] Clearly separate prompt construction from transport/provider mechanics
+* [ ] Keep portfolio analysis, CV normalization, CV alignment, and executive synthesis prompts distinct
+* [ ] Make prompts independently reviewable and testable
+* [ ] Preserve the existing analysis methodology and enabled lenses
+* [ ] Avoid prompt changes that increase token cost without a demonstrated reason
+
+This PR is about prompt organization, not changing what the application is intended to conclude.
+
+### PR 20 — Runtime AI Contracts
+
+* [ ] Inventory TypeScript types, JSON schemas, and structured-output definitions used by LLM calls
+* [ ] Remove unnecessary duplication between compile-time types and runtime output contracts
+* [ ] Establish one clear runtime validation contract for each structured LLM response
+* [ ] Fail explicitly when model output violates the expected contract
+* [ ] Keep validation close to the LLM boundary
+* [ ] Do not silently repair semantically invalid output
+
+---
+
+### Phase 8 — AI Evaluation
+
+### PR 21 — Evaluation Foundation
+
+* [ ] Add a dedicated `evals/` structure
+* [ ] Support deterministic fixtures and saved model outputs
+* [ ] Separate evaluation datasets from runtime tests
+* [ ] Allow offline evaluation without requiring live Azure OpenAI calls
+* [ ] Record evaluation results in a reproducible format
+* [ ] Keep eval tooling separate from production runtime paths
+
+### PR 22 — Portfolio Grounding Evaluations
+
+Evaluate whether generated portfolio assessments are justified by deterministic GitHub evidence.
+
+Candidate checks:
+
+* [ ] Required report structure is present
+* [ ] Referenced technologies exist in collected evidence
+* [ ] Repository examples correspond to actual evidence
+* [ ] Scores stay within expected ranges
+* [ ] Claims do not materially exceed available evidence
+* [ ] Representative evidence is selected rather than fabricated
+* [ ] Disabled lenses do not unexpectedly influence output
+
+### PR 23 — CV Alignment Evaluations
+
+Evaluate the core CV ↔ GitHub reasoning task.
+
+Create labeled cases covering:
+
+* [ ] clearly supported CV claims
+* [ ] weakly supported claims
+* [ ] unsupported claims
+* [ ] evidence present in GitHub but absent from the CV
+* [ ] ambiguous or overly broad CV claims
+* [ ] recommendations based on evidence gaps
+
+Measure whether the generated alignment classification and explanation agree with expected evidence.
+
+Use deterministic scoring where possible; introduce LLM-as-judge only where deterministic checks are insufficient.
+
+---
+
+### Phase 9 — Trust, Security, and Observability
+
+### PR 24 — Untrusted Content Boundaries
+
+Treat GitHub content and uploaded CV text as untrusted model input.
+
+* [ ] Explicitly delimit external content in prompts
+* [ ] Make clear that repository/CV content is evidence, not instructions
+* [ ] Review README, repository metadata, extracted document text, and similar inputs for prompt-injection exposure
+* [ ] Add adversarial test/eval cases
+* [ ] Preserve deterministic GitHub collection as the source of portfolio evidence
+* [ ] Do not give the LLM direct GitHub access
+
+### PR 25 — OpenTelemetry and Application Insights
+
+Add end-to-end tracing around the analysis pipeline.
+
+Candidate spans:
+
+* [ ] portfolio analysis run
+* [ ] GitHub evidence collection
+* [ ] evidence aggregation
+* [ ] portfolio lens calls
+* [ ] executive synthesis
+* [ ] CV upload/storage
+* [ ] Document Intelligence extraction
+* [ ] CV normalization
+* [ ] CV alignment
+
+Correlate where practical:
+
+* [ ] request/run identifier
+* [ ] model/provider
+* [ ] duration
+* [ ] retries
+* [ ] prompt/completion/total tokens
+* [ ] failures
+
+Avoid recording CV contents, repository contents, prompts, or other sensitive payloads in telemetry.
+
+### PR 26 — CI/CD and Supply-Chain Hardening
+
+* [ ] Make production deployment dependent on successful CI
+* [ ] Add dependency/security scanning
+* [ ] Add container image scanning
+* [ ] Prefer immutable image identifiers / commit-SHA tagging where practical
+* [ ] Review GitHub Actions permissions
+* [ ] Keep GitHub → Azure authentication based on OIDC
+* [ ] Avoid unrelated dependency upgrades in this PR
+
+---
+
+### Phase 10 — Controlled Public Deployment
+
+### PR 27 — Authentication
+
+* [ ] Add Azure Container Apps / Easy Auth-based authentication
+* [ ] Support an appropriate low-friction login experience for portfolio reviewers
+* [ ] Keep authentication concerns separate from analysis logic
+* [ ] Ensure unauthenticated users cannot trigger paid analysis operations
+
+### PR 28 — Per-User Quotas and Cost Controls
+
+* [ ] Add per-user usage accounting
+* [ ] Enforce a conservative analysis quota
+* [ ] Keep quota storage outside the application process
+* [ ] Return clear quota-exceeded behavior
+* [ ] Preserve portfolio-only and CV-enriched analysis as distinguishable cost paths where useful
+* [ ] Document the application's cost-control model
+
+### PR 29 — Azure Identity Hardening
+
+* [ ] Review Azure service authentication paths
+* [ ] Prefer managed identity + RBAC over secrets/connection strings where supported and practical
+* [ ] Apply least-privilege permissions
+* [ ] Document intentionally retained secrets and why they remain necessary
+* [ ] Do not replace working authentication mechanisms solely for architectural purity
+
+---
+
+## Candidate follow-ons
+
+These are valid improvements, but should only become numbered PRs when the preceding modernization work demonstrates a real need.
+
+### Reports Workspace Registry
+
+* [ ] Replace hardcoded report-id switches with a report registry if a third report type is introduced or current branching becomes difficult to maintain
+* [ ] Centralize report visibility, headers, sections, and content ownership
+* [ ] Avoid introducing the abstraction solely to generalize two report types
+
+### Honest Analysis Progress
+
+* [ ] Align displayed progress with actual workflow phases
+* [ ] Avoid showing CV comparison as complete before server-side analysis has actually performed it
+* [ ] Prefer coarse but truthful progress over simulated precision
+* [ ] Consider streaming/server callbacks only if the UX benefit justifies the complexity
+
+### Azure Module Layout Cleanup
+
+* [ ] Normalize root facades vs `lib/azure/` / `lib/providers/azure/` only where existing boundaries cause real navigation or ownership problems
+* [ ] Consider a shared structured-completion helper if repeated Azure OpenAI boilerplate remains after prompt/contract modernization
+* [ ] Avoid folder restructuring for cosmetic consistency alone
+
+### Domain / Model Boundary Clarification
+
+* [ ] Clarify where domain models, transport models, UI/workspace models, and provider contracts belong
+* [ ] Reduce workspace/CV UI state leaking into the primary portfolio domain model
+* [ ] Introduce an explicit multi-report result type if additional report types make the existing result shape inadequate
+* [ ] Avoid repo-wide type movement unless it solves demonstrated coupling
+
+### Other possible follow-ons
+
+* [ ] Shared environment/config helpers across Azure subsystems
+* [ ] Client-side GitHub username validation parity with the API
+* [ ] Provider abstraction for CV alignment only if a second implementation is genuinely planned
+* [ ] Re-enable additional portfolio lenses through configuration when evaluation results justify the added cost/latency
+* [ ] Add specialized `.claude/skills/` only after repeated development workflows make them worthwhile
+
+---
+
+## Out of scope for modernization unless explicitly reopened
+
+* Replacing deterministic repository evidence collection with LLM repository scanning
+* Giving an AI provider direct GitHub access
+* Rewriting the portfolio analysis methodology as part of infrastructure/refactoring PRs
+* Merging portfolio and CV reports into one undifferentiated report
+* Introducing generic abstractions solely for hypothetical future use cases
+* Broad dependency upgrades bundled into feature PRs
+* Switching AI providers merely to support development tooling such as `CLAUDE.md`
+* Personal, psychological, personality, employability, or other unsupported inference features
+* Sending CV contents, repository contents, prompts, or model responses to telemetry by default
+
