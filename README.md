@@ -11,7 +11,7 @@ The analysis engine collects and reasons over repository evidence. Reports prese
 
 ## Current Status
 
-Build history and planned modernization work live in [`ROADMAP.md`](./ROADMAP.md).
+Build history and planned modernization work live in [`ROADMAP.md`](./ROADMAP.md). AI-assisted development guidance lives in [`CLAUDE.md`](./CLAUDE.md).
 
 This repository includes:
 
