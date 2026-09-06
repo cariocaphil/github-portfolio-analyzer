@@ -4,7 +4,7 @@ Build history for the GitHub Portfolio Analyzer.
 
 PR numbers match merged GitHub pull requests. Future work continues from **PR 12**.
 
-The README keeps a short **Current Status** summary and how the system works today; this file holds the full checklist and the planned modernization sequence. AI-assisted development guidance lives in [`CLAUDE.md`](./CLAUDE.md).
+The README keeps a short **Current Status** summary and how the system works today; this file holds the full checklist and the planned modernization sequence. Agent rules live in [`AGENTS.md`](./AGENTS.md); project orientation for assistants lives in [`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
@@ -102,10 +102,10 @@ The README keeps a short **Current Status** summary and how the system works tod
 
 ### PR 12 — Claude Development Guidance ✅
 
-- [x] Add repository-level `CLAUDE.md`
-- [x] Document the current architecture and important code paths
+- [x] Add repository-level `CLAUDE.md` (orientation: purpose, code paths, commands)
+- [x] Add repository-level `AGENTS.md` (durable, tool-independent agent rules)
 - [x] Document the distinction between deterministic evidence collection and LLM interpretation
-- [x] Record project-specific development principles and architectural boundaries
+- [x] Keep `CLAUDE.md` thin and point agents at `AGENTS.md` for constraints
 - [x] Document verified development, test, and build commands
 - [x] Reference this roadmap for modernization priorities
 - [x] Documentation-only — no runtime changes or Claude-specific application dependencies
