@@ -11,6 +11,8 @@ The analysis engine collects and reasons over repository evidence. Reports prese
 
 ## Current Status
 
+Build history and planned modernization work live in [`ROADMAP.md`](./ROADMAP.md).
+
 This repository includes:
 
 - Real GitHub evidence collection via GitHub REST API
