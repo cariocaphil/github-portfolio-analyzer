@@ -2,9 +2,9 @@
 
 Build history for the GitHub Portfolio Analyzer.
 
-PR numbers match merged GitHub pull requests. Future work continues from **PR 11**.
+PR numbers match merged GitHub pull requests. Future work continues from **PR 12**.
 
-The README keeps a short **Current Status** summary and how the system works today; this file holds the full checklist and the planned modernization sequence.
+The README keeps a short **Current Status** summary and how the system works today; this file holds the full checklist and the planned modernization sequence. Agent rules live in [`AGENTS.md`](./AGENTS.md); project orientation for assistants lives in [`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
@@ -100,6 +100,16 @@ The README keeps a short **Current Status** summary and how the system works tod
 - [x] Add `ROADMAP.md` capturing build history and modernization sequence
 - [x] Documentation-only — no runtime, dependency, or tooling changes
 
+### PR 12 — Claude Development Guidance ✅
+
+- [x] Add repository-level `CLAUDE.md` (orientation: purpose, code paths, commands)
+- [x] Add repository-level `AGENTS.md` (durable, tool-independent agent rules)
+- [x] Document the distinction between deterministic evidence collection and LLM interpretation
+- [x] Keep `CLAUDE.md` thin and point agents at `AGENTS.md` for constraints
+- [x] Document verified development, test, and build commands
+- [x] Reference this roadmap for modernization priorities
+- [x] Documentation-only — no runtime changes or Claude-specific application dependencies
+
 ---
 
 ## Planned modernization sequence
@@ -118,16 +128,6 @@ Each PR should remain narrowly scoped and independently reviewable.
 ---
 
 ### Phase 5 — Development and Engineering Foundation
-
-### PR 12 — Claude Development Guidance
-
-* [ ] Add repository-level `CLAUDE.md`
-* [ ] Document the current architecture and important code paths
-* [ ] Document the distinction between deterministic evidence collection and LLM interpretation
-* [ ] Record project-specific development principles and architectural boundaries
-* [ ] Document verified development, test, and build commands
-* [ ] Reference this roadmap for modernization priorities
-* [ ] Do not introduce runtime changes or Claude-specific application dependencies
 
 ### PR 13 — Pull Request CI Quality Gates
 
